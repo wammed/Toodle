@@ -68,6 +68,25 @@ pub fn wmo_code_to_text(code: u8) -> &'static str {
     }
 }
 
+pub fn wmo_code_to_emoji(code: u8) -> &'static str {
+    match code {
+        0 => "☀️",
+        1 => "🌤️",
+        2 => "⛅",
+        3 => "☁️",
+        45 | 48 => "🌫️",
+        51 | 53 | 55 => "🌦️",
+        61 | 63 | 65 => "🌧️",
+        66 | 67 => "🌧️❄️",
+        71 | 73 | 75 | 77 => "❄️",
+        80 | 81 | 82 => "🌧️",
+        85 | 86 => "🌨️",
+        95 => "⛈️",
+        96 | 99 => "⛈️",
+        _ => "☁️",
+    }
+}
+
 pub struct OpenMeteoProvider {
     client: reqwest::Client,
 }
@@ -175,5 +194,38 @@ impl WeatherProvider for OpenMeteoProvider {
             },
             daily: daily_forecasts,
         })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_wmo_code_to_text() {
+        assert_eq!(wmo_code_to_text(0), "Clear sky");
+        assert_eq!(wmo_code_to_text(1), "Mainly clear");
+        assert_eq!(wmo_code_to_text(2), "Partly cloudy");
+        assert_eq!(wmo_code_to_text(3), "Overcast");
+        assert_eq!(wmo_code_to_text(61), "Rain");
+        assert_eq!(wmo_code_to_text(71), "Snow");
+        assert_eq!(wmo_code_to_text(95), "Thunderstorm");
+        assert_eq!(wmo_code_to_text(255), "Cloudy");
+    }
+
+    #[test]
+    fn test_wmo_code_to_emoji() {
+        assert_eq!(wmo_code_to_emoji(0), "☀️");
+        assert_eq!(wmo_code_to_emoji(1), "🌤️");
+        assert_eq!(wmo_code_to_emoji(2), "⛅");
+        assert_eq!(wmo_code_to_emoji(3), "☁️");
+        assert_eq!(wmo_code_to_emoji(45), "🌫️");
+        assert_eq!(wmo_code_to_emoji(53), "🌦️");
+        assert_eq!(wmo_code_to_emoji(63), "🌧️");
+        assert_eq!(wmo_code_to_emoji(71), "❄️");
+        assert_eq!(wmo_code_to_emoji(80), "🌧️");
+        assert_eq!(wmo_code_to_emoji(85), "🌨️");
+        assert_eq!(wmo_code_to_emoji(95), "⛈️");
+        assert_eq!(wmo_code_to_emoji(255), "☁️");
     }
 }

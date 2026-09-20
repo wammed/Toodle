@@ -74,7 +74,9 @@ pub fn view_forecast<'a, Message: From<PopupMessage> + Clone + 'static>(
                         ..Default::default()
                     });
 
-                let condition_box = container(text(day.condition_text.clone()).size(14))
+                let emoji = crate::weather::wmo_code_to_emoji(day.weather_code);
+                let condition_str = format!("{} {}", day.condition_text, emoji);
+                let condition_box = container(text(condition_str).size(14))
                     .width(Length::FillPortion(4))
                     .style(|_| container::Style {
                         text_color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.85)),

@@ -62,7 +62,8 @@ pub fn view_widget<'a, Message: From<WidgetMessage> + Clone + 'static>(
 
     let weather_str = if let Some(w) = weather {
         let temp_str = format_temperature(w.current.temperature_celsius, config.weather.temperature_unit);
-        format!("{}  {}", w.current.condition_text, temp_str)
+        let emoji = crate::weather::wmo_code_to_emoji(w.current.weather_code);
+        format!("{} {}  {}", w.current.condition_text, emoji, temp_str)
     } else if weather_error {
         "Weather unavailable".to_string()
     } else {
