@@ -255,7 +255,12 @@ impl Application for SettingsApp {
     }
 
     fn view(&self) -> Element<'_, Self::Message> {
-        let app_title = text("Toodle Settings").size(24);
+        let app_title = row![
+            cosmic::widget::icon::from_name("com.github.wammed.toodle").size(28),
+            text("Toodle Settings").size(24),
+        ]
+        .spacing(12)
+        .align_y(Alignment::Center);
 
         // Tab selection bar
         let tab_btn = |tab: SettingsTab, label: &'static str| {

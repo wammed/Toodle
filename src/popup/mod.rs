@@ -23,7 +23,14 @@ pub enum PopupMessage {
 }
 
 pub fn view_context_menu<'a, Message: From<PopupMessage> + Clone + 'static>() -> Element<'a, Message> {
-    let title = container(text("Toodle Menu").size(20))
+    let title_content = cosmic::iced::widget::row![
+        cosmic::widget::icon::from_name("com.github.wammed.toodle").size(24),
+        text("Toodle Menu").size(20),
+    ]
+    .spacing(10)
+    .align_y(Alignment::Center);
+
+    let title = container(title_content)
         .width(Length::Fill)
         .align_x(Alignment::Center)
         .padding([4, 0])

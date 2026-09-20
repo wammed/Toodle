@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Toodle
+GenericName=Digital Clock Widget
+Comment=Modern Digital Clock Widget for COSMIC Desktop
+Exec=/home/susie/GitHUB/wammed/Toodle/target/release/toodle
+Icon=com.github.wammed.toodle
+Terminal=false
+Type=Application
+Categories=Utility;Clock;Desktop;
+StartupWMClass=com.github.wammed.toodle
+Keywords=clock;widget;cosmic;weather;calendar;

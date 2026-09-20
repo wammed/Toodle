@@ -1,0 +1,11 @@
+[Desktop Entry]
+Name=Toodle Settings
+GenericName=Clock Widget Settings
+Comment=Configure Appearance, Layout, and Weather for Toodle
+Exec=/home/susie/GitHUB/wammed/Toodle/target/release/toodle-settings
+Icon=com.github.wammed.toodle.settings
+Terminal=false
+Type=Application
+Categories=Settings;Utility;Clock;
+StartupWMClass=com.github.wammed.toodle.settings
+Keywords=clock;widget;cosmic;settings;
