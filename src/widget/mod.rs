@@ -1,6 +1,7 @@
 pub mod edit_mode;
 
-use crate::config::Config;
+use crate::config::{Config, TemperatureUnit};
+use crate::weather::WeatherData;
 use chrono::Local;
 use cosmic::iced::widget::{column, container, text};
 use cosmic::iced::{Alignment, Border, Color, Length, Rectangle, Shadow};
@@ -19,9 +20,21 @@ pub enum WidgetMessage {
     RightClicked,
 }
 
+pub fn format_temperature(temp_celsius: f32, unit: TemperatureUnit) -> String {
+    match unit {
+        TemperatureUnit::Celsius => format!("{:.0}°C", temp_celsius),
+        TemperatureUnit::Fahrenheit => {
+            let f = (temp_celsius * 9.0 / 5.0) + 32.0;
+            format!("{:.0}°F", f)
+        }
+    }
+}
+
 pub fn view_widget<'a, Message: From<WidgetMessage> + Clone + 'static>(
     state: &WidgetState,
     config: &Config,
+    weather: Option<&WeatherData>,
+    weather_error: bool,
 ) -> Element<'a, Message> {
     let now = Local::now();
     let time_str = now.format("%H:%M:%S").to_string();
@@ -52,7 +65,20 @@ pub fn view_widget<'a, Message: From<WidgetMessage> + Clone + 'static>(
         .font(date_font)
         .size(date_size);
 
-    let content = column![time_text, date_text]
+    let weather_str = if let Some(w) = weather {
+        let temp_str = format_temperature(w.current.temperature_celsius, config.weather.temperature_unit);
+        format!("{}  {}", w.current.condition_text, temp_str)
+    } else if weather_error {
+        "Weather unavailable".to_string()
+    } else {
+        "...".to_string()
+    };
+
+    let weather_text = text(weather_str)
+        .font(date_font)
+        .size(date_size);
+
+    let content = column![time_text, date_text, weather_text]
         .spacing(6)
         .align_x(Alignment::Start);
 
@@ -100,4 +126,23 @@ pub fn content_bounds(config: &Config) -> Vec<Rectangle> {
         width: config.layout.width as f32,
         height: config.layout.height as f32,
     }]
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_temperature_formatting() {
+        assert_eq!(format_temperature(22.0, TemperatureUnit::Celsius), "22°C");
+        assert_eq!(format_temperature(0.0, TemperatureUnit::Celsius), "0°C");
+        assert_eq!(format_temperature(-5.0, TemperatureUnit::Celsius), "-5°C");
+
+        // 20°C -> 68°F
+        assert_eq!(format_temperature(20.0, TemperatureUnit::Fahrenheit), "68°F");
+        // 0°C -> 32°F
+        assert_eq!(format_temperature(0.0, TemperatureUnit::Fahrenheit), "32°F");
+        // 100°C -> 212°F
+        assert_eq!(format_temperature(100.0, TemperatureUnit::Fahrenheit), "212°F");
+    }
 }

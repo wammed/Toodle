@@ -12,8 +12,12 @@ use cosmic::iced::{Event, Subscription};
 use cosmic::{Application, Element};
 use tracing::info;
 
+use std::sync::Arc;
 use toodle::config::Config;
 use toodle::popup::{self, PopupMessage};
+use toodle::weather::{
+    weather_update_stream, WeatherCache, WeatherData, WeatherError, WeatherService,
+};
 use toodle::widget::edit_mode::{EditMessage, EditState};
 use toodle::widget::{self, WidgetMessage, WidgetState};
 
@@ -21,6 +25,9 @@ struct ToodleApp {
     core: Core,
     config: Config,
     state: WidgetState,
+    weather_service: Arc<WeatherService>,
+    weather: Option<WeatherData>,
+    weather_error: bool,
     widget_surface_id: SurfaceId,
     popup_surface_id: Option<SurfaceId>,
     edit_panel_surface_id: Option<SurfaceId>,
@@ -34,6 +41,8 @@ enum Message {
     Tick,
     EscapePressed,
     ConfigReloaded(Config),
+    FetchWeather,
+    WeatherUpdated(Result<WeatherData, WeatherError>),
 }
 
 impl From<WidgetMessage> for Message {
@@ -100,12 +109,32 @@ impl Application for ToodleApp {
             .map(|bytes| cosmic::iced::font::load(bytes).discard())
             .collect();
 
-        let initial_tasks = Task::batch(std::iter::once(create_widget_task).chain(load_fonts_tasks));
+        let weather_service = Arc::new(WeatherService::new());
+        let cached_weather = WeatherCache::load().map(|c| c.data);
+
+        let initial_weather_task = {
+            let s = weather_service.clone();
+            let lat = config.weather.latitude;
+            let lon = config.weather.longitude;
+            Task::future(async move {
+                let res = s.get_weather(lat, lon).await;
+                cosmic::Action::from(Message::WeatherUpdated(res))
+            })
+        };
+
+        let initial_tasks = Task::batch(
+            std::iter::once(create_widget_task)
+                .chain(load_fonts_tasks)
+                .chain(std::iter::once(initial_weather_task)),
+        );
 
         let app = Self {
             core,
             config,
             state: WidgetState::Normal,
+            weather_service,
+            weather: cached_weather,
+            weather_error: false,
             widget_surface_id,
             popup_surface_id: None,
             edit_panel_surface_id: None,
@@ -117,6 +146,36 @@ impl Application for ToodleApp {
     fn update(&mut self, message: Self::Message) -> Task<Self::Message> {
         match message {
             Message::Tick => Task::none(),
+
+            Message::FetchWeather => {
+                let s = self.weather_service.clone();
+                let lat = self.config.weather.latitude;
+                let lon = self.config.weather.longitude;
+                Task::future(async move {
+                    let res = s.get_weather(lat, lon).await;
+                    cosmic::Action::from(Message::WeatherUpdated(res))
+                })
+            }
+
+            Message::WeatherUpdated(res) => {
+                match res {
+                    Ok(data) => {
+                        info!(
+                            "Weather updated: {} {:.1}°C",
+                            data.current.condition_text, data.current.temperature_celsius
+                        );
+                        self.weather = Some(data);
+                        self.weather_error = false;
+                    }
+                    Err(err) => {
+                        tracing::warn!("Weather update failed: {}", err);
+                        if self.weather.is_none() {
+                            self.weather_error = true;
+                        }
+                    }
+                }
+                Task::none()
+            }
 
             Message::Widget(WidgetMessage::RightClicked) => {
                 let mut tasks = Vec::new();
@@ -345,29 +404,42 @@ impl Application for ToodleApp {
                 }
 
                 info!("Config reloaded via file watcher from external change");
+                let location_changed = self.config.weather.latitude != new_config.weather.latitude
+                    || self.config.weather.longitude != new_config.weather.longitude;
+
                 self.config = new_config;
+
+                let mut tasks = Vec::new();
+
+                if location_changed {
+                    let s = self.weather_service.clone();
+                    let lat = self.config.weather.latitude;
+                    let lon = self.config.weather.longitude;
+                    tasks.push(Task::future(async move {
+                        let res = s.get_weather(lat, lon).await;
+                        cosmic::Action::from(Message::WeatherUpdated(res))
+                    }));
+                }
 
                 if let WidgetState::Normal = self.state {
                     let (top, right, bottom, left) = self.config.layout.margins();
-                    Task::batch(vec![
-                        layer_cmd::set_anchor(
-                            self.widget_surface_id,
-                            self.config.layout.anchor.to_layer_anchor(),
-                        ),
-                        layer_cmd::set_margin(self.widget_surface_id, top, right, bottom, left),
-                        layer_cmd::set_size(
-                            self.widget_surface_id,
-                            Some(self.config.layout.width),
-                            Some(self.config.layout.height),
-                        ),
-                        layer_cmd::set_input_zone(
-                            self.widget_surface_id,
-                            Some(widget::content_bounds(&self.config)),
-                        ),
-                    ])
-                } else {
-                    Task::none()
+                    tasks.push(layer_cmd::set_anchor(
+                        self.widget_surface_id,
+                        self.config.layout.anchor.to_layer_anchor(),
+                    ));
+                    tasks.push(layer_cmd::set_margin(self.widget_surface_id, top, right, bottom, left));
+                    tasks.push(layer_cmd::set_size(
+                        self.widget_surface_id,
+                        Some(self.config.layout.width),
+                        Some(self.config.layout.height),
+                    ));
+                    tasks.push(layer_cmd::set_input_zone(
+                        self.widget_surface_id,
+                        Some(widget::content_bounds(&self.config)),
+                    ));
                 }
+
+                Task::batch(tasks)
             }
         }
     }
@@ -376,6 +448,8 @@ impl Application for ToodleApp {
         let tick = cosmic::iced::Subscription::run(toodle::clock::next_second_tick)
             .map(|_| Message::Tick);
         let watcher = cosmic::iced::Subscription::run(Config::watch).map(Message::ConfigReloaded);
+        let weather_sub = cosmic::iced::Subscription::run(weather_update_stream)
+            .map(|_| Message::FetchWeather);
 
         // Filter events strictly to avoid flooding the message queue with cursor movements!
         let escape_key = cosmic::iced::event::listen_with(|event, _status, _id| {
@@ -390,7 +464,7 @@ impl Application for ToodleApp {
             }
         });
 
-        Subscription::batch(vec![tick, watcher, escape_key])
+        Subscription::batch(vec![tick, watcher, weather_sub, escape_key])
     }
 
     fn view(&self) -> Element<'_, Self::Message> {
@@ -399,7 +473,13 @@ impl Application for ToodleApp {
 
     fn view_window(&self, id: SurfaceId) -> Element<'_, Self::Message> {
         if id == self.widget_surface_id {
-            widget::view_widget(&self.state, &self.config).map(Message::Widget)
+            widget::view_widget(
+                &self.state,
+                &self.config,
+                self.weather.as_ref(),
+                self.weather_error,
+            )
+            .map(Message::Widget)
         } else if Some(id) == self.popup_surface_id {
             popup::view_context_menu().map(Message::Popup)
         } else if Some(id) == self.edit_panel_surface_id {
