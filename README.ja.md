@@ -7,32 +7,33 @@
 [![COSMIC](https://img.shields.io/badge/Desktop-COSMIC-purple.svg)](https://github.com/pop-os/cosmic-epoch)
 [![Wayland](https://img.shields.io/badge/Protocol-wlr--layer--shell-green.svg)](https://wayland.freedesktop.org/)
 
-[English Documentation](README.md) | [アーキテクチャ設計](docs/ARCHITECTURE.ja.md) | [機能仕様](docs/FEATURES.ja.md) | [引き継ぎサマリー](SESSION_HANDOVER.md)
+[English (英語ドキュメント)](README.md) | [アーキテクチャ設計書](docs/ARCHITECTURE.ja.md) | [機能仕様書](docs/FEATURES.ja.md) | [設計書 v0.3 (Baseline)](docs/Drafts/Toodle-Design-Docs-v0.3.md) | [引き継ぎサマリー](SESSION_HANDOVER.md)
 
 ---
 
 ## 主な特徴 (Highlights)
 
-- **Wayland ネイティブ対応**: System76 の次世代デスクトップ COSMIC 向けに、`libcosmic` および `wlr-layer-shell` を用いて開発。
-- **チラつきゼロのサーフェス制御**: ウィジェット本体は常に通常ウィンドウの背面（`Layer::Bottom`）に常駐。非矩形入力領域（`set_input_zone`）により、時計・文字以外の透明領域のクリックはデスクトップ壁紙やアイコンへ透過。
-- **高精度サブセカンド同期時計**: 次の1秒のマイクロ秒境界に高精度同調する非同期ストリームにより、滑らかで正確な時刻更新を実現。
-- **2段階キャッシュ付き天気予報**: Open-Meteo REST API（無料・登録不要）と連携し、現在天気と7日間予報を表示。30分（現在天気）/ 3時間（予報）の永続JSONキャッシュとオフライン時自動フォールバックを完備。
-- **インタラクティブなポップアップ（`Layer::Top`）**:
-  - 右クリックコンテキストメニュー（340 x 380、18pxフォント、中央配置）。
-  - 月間カレンダー（680 x 720、スムーズな月送りナビゲーション、「今日」ハイライト）。
-  - 7日間週間天気予報（680 x 720、天候アイコン、最高/最低気温幅、降水確率）。
-- **デスクトップ上での直接レイアウト編集 (Edit Layout Mode)**: 右クリックメニューから直接編集モードへ移行し、デスクトップ上でバウンディング枠を見ながらマージン・サイズ・フォント倍率を直感的に調整可能。
-- **独立した専用設定アプリ (`toodle-settings`)**: XDG Toplevel ウィンドウ（720 x 780）として動作する設定アプリ。Appearance、Layout、Weather、Display の4タブを備え、スライダー操作やカラー選択が即座にデスクトップウィジェットへリアルタイム反映。
-- **inotify 連動ホットリロード**: `~/.config/toodle/config.toml` の変更をバックグラウンドスレッドで常時監視（応答速度 25ms）。設定アプリからの変更をウィジェットの再起動なしにリアルタイム反映。
-- **100% バイナリ組み込みフォント**: Roboto Sans, JetBrains Mono, DejaVu Serif, Open Sans の 4 フォントファミリ（計8ファイル）を `include_bytes!` でバイナリ内へ静的組み込み。外部システムフォントの有無に依存せず、常に同一の正確なデザインで描画。
+- **COSMIC / Wayland ネイティブ**: System76 の公式ツールキット `libcosmic` および `wlr-layer-shell` プロトコルを採用。
+- **チラつきゼロのサーフェス制御**: 最背面 `Layer::Bottom` に常駐し、`content_bounds` 矩形入力領域により余白のクリックをデスクトップ壁紙やアイコンへ透過。
+- **高精度サブセカンドクロック**: 次の 1 秒のマイクロ秒境界に同調する非同期ストリームにより、CPU 負荷なしに正確な 1 秒更新を実現。
+- **2段階キャッシュ付き天気サブシステム**: Open-Meteo REST API を利用し、30分（現在天気）/ 3時間（週間予報）のローカル永続キャッシュ、厳格な座標検証、オフライン自動フォールバックを完備。
+- **独立ポップアップサーフェス群 (`Layer::Top`)**:
+  - 右クリックコンテキストメニュー（340 x 380、18px 中央配置ボタン）。
+  - 月間カレンダー（680 x 720、滑らかな月送り、「今日」ハイライト）。
+  - 7日間週間天気予報（680 x 720、天候アイコン、気温幅、降水確率）。
+  - デスクトップ壁紙に左右されないソリッドダーク背景スタイリング。
+- **2 サーフェス Edit Layout モード**: `Layer::Top` の独立 `Edit Layout Panel` と `Layer::Bottom` のウィジェット本体が連携。サーフェスの再生成を行わないインプレース更新により、チラつきゼロでリアルタイムに変形。
+- **独立設定アプリ (`toodle-settings`)**: ネイティブ XDG Toplevel ウィンドウ（720 x 780、ソリッドダーク背景）。4 タブ構成（Appearance, Layout, Weather, Display）、リアルタイム自動保存、10 テーマプリセット、16 色カラーパレット、クイック都市選択。
+- **inotify 設定ホットリロード**: `~/.config/toodle/config.toml` の変更を 25ms で高速検知し、ウィジェットへ即座に反映。
+- **バイナリ完全組み込みフォント**: Roboto Sans, JetBrains Mono, DejaVu Serif, Open Sans の 4 ファミリ（計8ファイル）を `include_bytes!` で静的組み込み。外部システムフォント非依存。
 
 ---
 
 ## クイックスタート
 
-### 前提要件
-- Arch Linux（または Rust / Cargo が動作する最新の Linux 環境）。
-- COSMIC Desktop Environment（`cosmic-comp`, `libcosmic`, `wayland`, `libxkbcommon`）。
+### 前提条件
+- Arch Linux（または Rust / Cargo が動作する最新の Linux ディストリビューション）。
+- COSMIC Desktop Environment（`cosmic-comp`, `libcosmic` 依存ライブラリ: `wayland`, `libxkbcommon`）。
 
 ### ビルド
 
@@ -41,14 +42,14 @@
 git clone https://github.com/wammed/Toodle.git
 cd Toodle
 
-# toodle ウィジェットおよび toodle-settings のビルド
+# ウィジェット本体および設定アプリのビルド
 cargo build --release
 ```
 
-### 起動方法
+### 起動
 
 ```bash
-# デスクトップクロックウィジェット本体の起動 (デスクトップ背景 Layer::Bottom に常駐)
+# クロックウィジェット本体の起動 (デスクトップ背景 Layer::Bottom で常駐)
 ./target/release/toodle &
 
 # 設定アプリケーションの起動
@@ -63,22 +64,25 @@ cargo build --release
 ┌─────────────────────────────────────────────────────────────┐
 │                       COSMIC Desktop                        │
 │                                                             │
-│   Layer::Top ポップアップ:                                  │
+│   Layer::Top 独立サーフェス群:                                │
 │   ┌───────────────┐ ┌───────────────┐ ┌──────────────────┐  │
 │   │ Context Menu  │ │   Calendar    │ │ Weekly Forecast  │  │
 │   │   (340x380)   │ │   (680x720)   │ │    (680x720)     │  │
 │   └───────▲───────┘ └───────▲───────┘ └────────▲─────────┘  │
 │           │                 │                  │            │
-│   Layer::Bottom ウィジェット:│                  │            │
-│   ┌─────────────────────────┴──────────────────┴─────────┐  │
+│           └─────────────────┼──────────────────┘            │
+│                             │ Edit Layout Panel (Layer::Top)│
+│                             ▼                               │
+│   Layer::Bottom ウィジェット本体:                            │
+│   ┌──────────────────────────────────────────────────────┐  │
 │   │ Toodle Main Widget                                   │  │
 │   │ [12:34:56]  [Monday, Sep 20, 2026]  [Sunny 22°C]     │  │
-│   │ (非矩形入力領域: 背景クリックは壁紙へ透過)             │  │
+│   │ (content_bounds 矩形入力領域: 背景クリック透過)         │  │
 │   └─────────────────────────▲────────────────────────────┘  │
 │                             │ inotify 監視 (~25ms)          │
 │               ~/.config/toodle/config.toml                  │
 │                             ▲                               │
-│   XDG Toplevel 設定ウィンドウ:│ アトミック保存 (.tmp -> rename)│
+│   XDG Toplevel ウィンドウ:   │ アトミック保存 (.tmp -> rename)│
 │   ┌─────────────────────────┴────────────────────────────┐  │
 │   │ toodle-settings (Appearance, Layout, Weather, Disp)  │  │
 │   └──────────────────────────────────────────────────────┘  │
@@ -87,16 +91,16 @@ cargo build --release
 
 ---
 
-## テーマプリセットとフォント一覧
+## テーマプリセット & 組み込みフォント
 
-| テーマ名 | 採用フォント | デフォルト色 | スタイル概要 |
+| テーマ名 | フォントファミリ | デフォルト推奨色 | スタイル解説 |
 |---|---|---|---|
-| **Modern** | Roboto Sans Bold / Regular | `#FFFFFF` | クリーンで現代的なフラットデザイン |
-| **Classic** | DejaVu Serif Bold / Regular | `#E2E8F0` | 高級時計のような重厚でクラシックな佇まい |
-| **Digital Mono** | JetBrains Mono Bold / Regular | `#38BDF8` | 開発者に馴染むシャープなモノスペース端末風 |
-| **Minimal** | Open Sans Bold / Regular | `#94A3B8` | 控えめで邪魔にならないヒューマニストサンセリフ |
-| **Cyberpunk** | JetBrains Mono Bold / Regular | `#EAB308` | 高コントラストで未来的なサイバーネオン風 |
-| **Nord** | Open Sans Bold / Regular | `#38BDF8` | 北極の冷涼なブルーとスレートの組み合わせ |
+| **Modern** | Roboto Sans Bold / Regular | `#FFFFFF` | クリーンで現代的なサンセリフスタイル |
+| **Classic** | DejaVu Serif Bold / Regular | `#E2E8F0` | 重厚で上品なタイムピースクラシックスタイル |
+| **Digital Mono** | JetBrains Mono Bold / Regular | `#38BDF8` | 開発者向けターミナルライクなモノスペース |
+| **Minimal** | Open Sans Bold / Regular | `#94A3B8` | 控えめで洗練されたヒューマニストデザイン |
+| **Cyberpunk** | JetBrains Mono Bold / Regular | `#EAB308` | ネオンイエローの高コントラストフューチャースタイル |
+| **Nord** | Open Sans Bold / Regular | `#38BDF8` | 北極の冷涼さを感じるアークティックブルースタイル |
 | **Warm Sunset** | DejaVu Serif Bold / Regular | `#F59E0B` | 夕暮れの温かみを感じるアンバーゴールド |
 | **Forest** | Roboto Sans Bold / Regular | `#10B981` | 自然で爽やかなエメラルドグリーンスタイル |
 | **Slate** | JetBrains Mono Bold / Regular | `#94A3B8` | インダストリアルで落ち着いたダークメタリック |
@@ -110,7 +114,7 @@ cargo build --release
 
 ```toml
 [display]
-output = "" # 空文字でプライマリ/アクティブディスプレイ、または "DP-1" 等を指定
+output = "" # 対象 Wayland 出力先（例: "DP-1"、空文字でアクティブ出力）
 
 [layout]
 anchor = "TopRight" # TopLeft, TopRight, BottomLeft, BottomRight
@@ -134,12 +138,21 @@ temperature_unit = "Celsius" # Celsius, Fahrenheit
 
 ---
 
-## 操作方法
+## 基本操作
 
 - **左クリック**: ウィジェットやボタンのフォーカス・操作。
 - **右クリック**: コンテキストメニュー（`Calendar`, `Weekly Forecast`, `Edit Layout`, `Settings`, `Quit`）を表示。
-- **Edit Layout Mode**: スライダーでマージン・サイズを直接ドラッグ調整し、`Save` または `Cancel`。
+- **Edit Layout Mode**: 独立した `Edit Layout Panel` のスライダーでマージン・サイズ・フォントスケールをリアルタイム調整し、`Save` または `Cancel`。
 - **設定アプリ (`toodle-settings`)**: スライダーやテーマ、都市ボタンの操作がデスクトップ上のウィジェットへ即座にリアルタイム反映。
+
+---
+
+## ドキュメント & 設計 Baseline
+
+- **[Toodle Design Document v0.3](docs/Drafts/Toodle-Design-Docs-v0.3.md)**: COSMIC 実機検証結果を反映した公式の設計基準書（Baseline）。
+- **[アーキテクチャ設計書](docs/ARCHITECTURE.ja.md)**: サーフェス階層、クロックストリーム、キャッシュ仕様の詳細。
+- **[機能仕様書](docs/FEATURES.ja.md)**: UI/UX 機能の詳細解説。
+- **[開発引き継ぎサマリー](SESSION_HANDOVER.md)**: 全開発履歴、技術決定事項、既知のギャップ、ロードマップ。
 
 ---
 

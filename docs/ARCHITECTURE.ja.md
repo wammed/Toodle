@@ -2,6 +2,8 @@
 
 本ドキュメントは、System76 COSMIC Desktop Environment 向けデジタルクロックウィジェット **Toodle** のシステムアーキテクチャ、Wayland layer-shell プロトコル制御、高精度クロックパイプライン、天気2段階キャッシュ、inotify 設定同期、および組み込みタイポグラフィ基盤に関する詳細な技術解説を提供します。
 
+> **設計書 Baseline**: 本アーキテクチャは [`docs/Drafts/Toodle-Design-Docs-v0.3.md`](file:///home/susie/GitHUB/wammed/Toodle/docs/Drafts/Toodle-Design-Docs-v0.3.md)（v0.3 Phase 0実機検証反映版 / Current Implementation Baseline）に完全準拠しています。COSMIC コンポジタ（`cosmic-comp`）の実機検証で成立した動作を初期ドラフトの想定よりも正として優先します。
+
 ---
 
 ## 1. システム全体構成
@@ -9,14 +11,14 @@
 Toodle は、Wayland コンポジタ `cosmic-comp` 上で動作するよう設計されており、System76 の公式ツールキット `libcosmic`（Wayland layer-shell 拡張を備えた `iced` ベース）を採用しています。
 
 システムは以下の 2 つの独立バイナリで構成されます：
-1. **`toodle` (ウィジェットデーモン & Layer Shell ポップアップ)**:
-   - デスクトップ背景上の `Layer::Bottom` サーフェスとして常駐する軽量デーモン。
-   - 必要に応じて `Layer::Top` ポップアップ（コンテキストメニュー、月間カレンダー、7日間週間予報、Edit Layout モード）を最前面へ展開。
-   - `~/.config/toodle/config.toml` を inotify で常時監視し、チラつきゼロでリアルタイムホットリロードを実行。
+1. **`toodle` (ウィジェットデーモン & 独立 Layer Shell ポップアップ群)**:
+   - デスクトップ壁紙上の `Layer::Bottom` サーフェスとして常駐する軽量デーモン。
+   - 必要に応じて `Layer::Top` ポップアップサーフェス群（コンテキストメニュー、月間カレンダー、7日間週間予報、Edit Layout Panel）を独立生成（`xdg_popup` は明示的に不採用）。
+   - `~/.config/toodle/config.toml` を inotify で常時監視し、同一サーフェスへのインプレース更新によってチラつきゼロでリアルタイムホットリロードを実行。
 2. **`toodle-settings` (XDG Toplevel 設定アプリ)**:
    - 独立して、またはウィジェットの右クリックメニューから起動可能なデスクトップ設定アプリケーション。
    - Appearance、Layout、Weather、Display の 4 カテゴリタブを提供。
-   - スライダー操作や色選択をアトミック保存し、起動中の `toodle` ウィジェットへリアルタイム同期。
+   - スライダー操作や色選択をアトミック保存（`.tmp` 書込 → `rename`）し、起動中の `toodle` ウィジェットへリアルタイム同期。
 
 ---
 
@@ -30,19 +32,20 @@ Toodle は、Wayland コンポジタ `cosmic-comp` 上で動作するよう設�
 │   (画面ロック、スクリーンキャプチャオーバーレイ等)               │
 │                                                               │
 │ [ Layer::Top ]                                                │
-│   - Toodle Context Menu (340 x 380)                           │
-│   - Toodle Monthly Calendar (680 x 720)                       │
-│   - Toodle Weekly Forecast (680 x 720)                        │
-│   - Toodle Edit Layout Mode オーバーレイ操作枠                 │
+│   - Context Menu (340 x 380, ソリッド背景)                    │
+│   - Monthly Calendar (680 x 720, ソリッド背景)                │
+│   - Weekly Forecast (680 x 720, ソリッド背景)                 │
+│   - Edit Layout Panel (独立 Top サーフェス)                   │
 │                                                               │
 │ [ 通常ウィンドウ層 (XDG Toplevel) ]                            │
 │   - ブラウザ、端末、ファイルマネージャ等                        │
-│   - toodle-settings 設定ウィンドウ (720 x 780)                 │
+│   - toodle-settings 設定ウィンドウ (720 x 780, ソリッド背景)   │
 │                                                               │
 │ [ Layer::Bottom ]                                             │
-│   - Toodle クロックウィジェット本体 (280 x 140)                │
+│   - Toodle クロックウィジェット本体 (例: 280 x 140)            │
+│     * 背景透過                                                │
 │     * アンカー: TopRight (設定可能)                            │
-│     * 非矩形入力領域 (透明部分はデスクトップへクリック透過)      │
+│     * 入力領域: content_bounds() (Normal) / 全体 (Edit)       │
 │                                                               │
 │ [ Layer::Background ]                                         │
 │   - COSMIC 壁紙                                               │
@@ -51,31 +54,42 @@ Toodle は、Wayland コンポジタ `cosmic-comp` 上で動作するよう設�
 
 ### 2.1 レイヤー階層の選定理由
 - **ウィジェット本体 (`Layer::Bottom`)**: 通常のアプリケーションウィンドウ（ブラウザやエディタ等）を最大化または重ねた際にウィジェットの上に被さるため、作業の邪魔になりません。空のワークスペースでは常に壁紙上に整然と表示されます。
-- **ポップアップ群 (`Layer::Top`)**: 右クリックメニューやカレンダー、週間予報は、一般のアプリケーションウィンドウよりも手前の最前面に浮き上がり、操作が遮られないよう配置されます。
+- **独立 Top サーフェス群 (`Layer::Top`)**: 右クリックメニューやカレンダー、週間予報、Edit Layout Panel は、一般のアプリケーションウィンドウよりも手前の最前面に浮き上がり、操作が遮られないよう独立した `Layer::Top` サーフェスとして配置されます。
 - **排他領域の非確保 (`exclusive_zone(0)`)**: ウィジェットは排他領域を持たない（0px）ため、パネルを押し退けたり他のアプリのワークスペースを狭めたりしません。
+- **ソリッドダークスタイリング**: ポップアップ群および `toodle-settings` は、壁紙の絵柄に関わらず高い可読性を保つため、不透明ダークソリッド背景（`Color::from_rgb(0.12, 0.13, 0.17)`）を統一適用しています。
 
-### 2.2 非矩形入力領域（クリック透過）の実装
-Wayland デスクトップウィジェットで頻発する問題が「透明なウィンドウ領域がクリックを遮断し、背後の壁紙メニューやデスクトップアイコンがクリックできなくなる」現象です。
-
-Toodle は `cosmic::iced::wayland::layer_cmd::set_input_zone` を用いてこれを完全に解決しています：
-```rust
-let padding = 12.0;
-let estimated_w = (180.0 * config.appearance.font_scale + padding * 2.0).min(config.layout.width as f32);
-let estimated_h = (90.0 * config.appearance.font_scale + padding * 2.0).min(config.layout.height as f32);
-Rectangle { x: 0.0, y: 0.0, width: estimated_w, height: estimated_h }
-```
-文字が表示されている実描画領域のみに入力判定（クリック受付）を限定し、それ以外の透明マージン部分はコンポジタによって下の壁紙やデスクトップへ素通し（パススルー）されます。
+### 2.2 入力領域（クリック透過）の実装 (設計書第8項)
+Wayland デスクトップウィジェットで頻発する問題が「透明なウィンドウ領域がクリックを遮断し、背後の壁紙メニューやデスクトップアイコンがクリックできなくなる」現象です。Toodle は `cosmic::iced::wayland::layer_cmd::set_input_zone` を用いてこれを制御しています：
+- **Normal モード**:
+  ウィジェット描画領域の矩形バウンディングボックス `content_bounds()` を設定します：
+  ```rust
+  let padding = 12.0;
+  let estimated_w = (180.0 * config.appearance.font_scale + padding * 2.0).min(config.layout.width as f32);
+  let estimated_h = (90.0 * config.appearance.font_scale + padding * 2.0).min(config.layout.height as f32);
+  Rectangle { x: 0.0, y: 0.0, width: estimated_w, height: estimated_h }
+  ```
+  ウィジェット外側の透明マージン部分は入力領域から除外され、下の壁紙やデスクトップアイコンへクリックが素通し（パススルー）されます。
+  *(※注: v0.3 設計書第8項に基づき、文字の輪郭に沿った非矩形ヒットマスクは要求せず、`content_bounds()` の矩形入力領域を正式仕様とします)。*
+- **Edit モード**:
+  ウィジェット本体のサーフェス入力領域を全体（`None`）へ拡張し、枠外クリックの取りこぼしを防ぎます。終了時に通常の `content_bounds()` へ復帰します。
 
 ### 2.3 チラつきゼロのインプレースサーフェス更新
-設定変更やレイアウト編集モードの開始・終了時にサーフェスを破棄して作り直すと、Wayland コンポジタ側で画面のちらつき（フリッカー）が発生します。
-Toodle ではサーフェスを破棄せず、同一サーフェスに対して差分リクエストを発行します：
+設定変更やレイアウト編集時にサーフェスを破棄して作り直すと、Wayland コンポジタ側で画面のちらつき（フリッカー）が発生します。Toodle ではサーフェスを破棄せず、同一サーフェスに対して差分リクエストを発行します：
 ```rust
 tasks.push(layer_cmd::set_anchor(surface_id, anchor));
 tasks.push(layer_cmd::set_margin(surface_id, top, right, bottom, left));
 tasks.push(layer_cmd::set_size(surface_id, Some(width), Some(height)));
 tasks.push(layer_cmd::set_input_zone(surface_id, Some(bounds)));
 ```
-これにより、画面が瞬くことなく 0ms で滑らかにサイズやマージンが更新されます。
+これにより、スライダー操作やモード遷移の際も 0ms で滑らかにサイズやマージンが更新されます。
+
+### 2.4 Edit Layout アーキテクチャ (2 サーフェス方式 / 設計書第7項)
+ウィジェット本体のサーフェスを編集用 UI に変形させるのではなく、表示と操作を分離した 2 サーフェス方式を採用しています：
+- **Bottom サーフェス**: `Layer::Bottom` で実際に動作・描画される `Toodle` ウィジェット。
+- **Top サーフェス**: `Layer::Top` に独立生成される `Edit Layout Panel`。Anchor、Margin X/Y、Width、Height、Font Scale のスライダーおよび Save / Cancel ボタンを提供。
+- Top パネル側の操作によって Bottom ウィジェットに対してインプレースな Layer Command が発行され、リアルタイムに位置やサイズが連動。
+- **Save**: 編集値を `config.toml` に保存し、パネルを破棄して通常入力領域へ戻す。
+- **Cancel**: 編集前の設定を Layer Command で復元し、パネルを破棄して通常入力領域へ戻す。
 
 ---
 
@@ -136,10 +150,11 @@ pub fn is_location_match(&self, lat: f64, lon: f64) -> bool {
 ```
 座標が一致しない場合は即座にキャッシュをバイパスし、新都市の最新データを取得します。
 
-### 4.2 キャッシュ保持ポリシー（設計第13項準拠）
+### 4.2 キャッシュ保持ポリシー（設計書第14項）
 - **現在天気**: 30分間有効。
 - **7日間週間予報**: 3時間有効。
-- **オフラインフォールバック**: ネットワーク未接続時は最後の有効キャッシュを安全に継続表示します。
+- **オフラインフォールバック**: ネットワーク未接続時は現在の座標における最後の有効キャッシュを安全に継続表示します。
+- *(※実装ギャップ注記: 設計上の TTL は定義されていますが、現在天気と週間予報のフェッチサイクルの完全分離は今後の課題です)*。
 
 ---
 
@@ -156,4 +171,15 @@ pub fn is_location_match(&self, lat: f64, lon: f64) -> bool {
 
 ## 6. バイナリ組み込みタイポグラフィ
 
-外部システムフォントの有無によって文字のメトリクスが崩れることを防ぐため（設計第10項）、Roboto、JetBrains Mono、DejaVu Serif、Open Sans の計 8 ファイルを `include_bytes!` でバイナリ内へ静的組み込みしています。どの Linux ディストリビューションでも完全に同一の美しいフォントで描画されます。
+外部システムフォントの有無によって文字のメトリクスが崩れることを防ぐため（設計書第11項）、Roboto、JetBrains Mono、DejaVu Serif、Open Sans の計 8 ファイルを `include_bytes!` でバイナリ内へ静的組み込みしています。どの Linux ディストリビューションでも完全に同一の美しいフォントで描画されます。
+
+---
+
+## 7. 既知の実装ギャップ (設計書第25項)
+
+現在、v0.3 設計書とコードの間で確認されている既知の差分・残課題は以下の通りです：
+1. **Display Output のバインド**: `DisplayConfig::output` は設定に保持されていますが、ウィジェットは現在 `IcedOutput::Active` に固定されています。
+2. **Weather TTL の完全分離**: 現在天気（30分）と予報（3時間）の TTL は設計されていますが、取得処理は現状一括で行われています。
+3. **HTTP 指数バックオフ**: 429 / 5xx エラー時の指数バックオフリトライは未実装です。
+4. **Geocoding 自動解決**: 都市プリセットおよび手動座標入力のみ対応しており、都市名からの自動解決は Phase 5 で対応予定です。
+5. **Popup Dismissal**: 領域外クリックやフォーカス喪失時の自動閉鎖は、実機検証と仕様確定を経て実装予定です。
