@@ -21,6 +21,13 @@ use toodle::weather::{
 use toodle::widget::edit_mode::{EditMessage, EditState};
 use toodle::widget::{self, WidgetMessage, WidgetState};
 
+#[derive(Debug, Clone)]
+enum ActivePopup {
+    ContextMenu,
+    Calendar(popup::CalendarState),
+    Forecast,
+}
+
 struct ToodleApp {
     core: Core,
     config: Config,
@@ -30,6 +37,7 @@ struct ToodleApp {
     weather_error: bool,
     widget_surface_id: SurfaceId,
     popup_surface_id: Option<SurfaceId>,
+    active_popup: Option<ActivePopup>,
     edit_panel_surface_id: Option<SurfaceId>,
 }
 
@@ -137,6 +145,7 @@ impl Application for ToodleApp {
             weather_error: false,
             widget_surface_id,
             popup_surface_id: None,
+            active_popup: None,
             edit_panel_surface_id: None,
         };
 
@@ -187,6 +196,7 @@ impl Application for ToodleApp {
 
                 let new_popup_id = SurfaceId::unique();
                 self.popup_surface_id = Some(new_popup_id);
+                self.active_popup = Some(ActivePopup::ContextMenu);
 
                 let (w_top, w_right, w_bottom, w_left) = self.config.layout.margins();
                 let popup_margin = IcedMargin {
@@ -205,7 +215,7 @@ impl Application for ToodleApp {
                     output: IcedOutput::Active,
                     namespace: "toodle-popup".to_string(),
                     margin: popup_margin,
-                    size: Some((Some(180), Some(196))),
+                    size: Some((Some(340), Some(380))),
                     exclusive_zone: 0,
                     size_limits: Limits::NONE,
                 };
@@ -219,6 +229,7 @@ impl Application for ToodleApp {
                 if let Some(popup_id) = self.popup_surface_id.take() {
                     tasks.push(layer_cmd::destroy_layer_surface(popup_id));
                 }
+                self.active_popup = None;
 
                 // Initialize Edit State with current layout and font_scale
                 self.state = WidgetState::Edit(EditState::new(
@@ -264,30 +275,107 @@ impl Application for ToodleApp {
                 if let Some(popup_id) = self.popup_surface_id.take() {
                     tasks.push(layer_cmd::destroy_layer_surface(popup_id));
                 }
+                self.active_popup = None;
 
                 let _ = std::process::Command::new("toodle-settings").spawn();
                 Task::batch(tasks)
             }
 
             Message::Popup(PopupMessage::OpenCalendar) => {
-                info!("Calendar clicked (Phase 3 placeholder)");
                 let mut tasks = Vec::new();
                 if let Some(popup_id) = self.popup_surface_id.take() {
                     tasks.push(layer_cmd::destroy_layer_surface(popup_id));
                 }
+
+                let new_popup_id = SurfaceId::unique();
+                self.popup_surface_id = Some(new_popup_id);
+                self.active_popup = Some(ActivePopup::Calendar(popup::CalendarState::new()));
+
+                let (w_top, w_right, w_bottom, w_left) = self.config.layout.margins();
+                let popup_margin = IcedMargin {
+                    top: w_top + 16,
+                    right: w_right + 16,
+                    bottom: w_bottom + 16,
+                    left: w_left + 16,
+                };
+
+                let popup_settings = SctkLayerSurfaceSettings {
+                    id: new_popup_id,
+                    layer: Layer::Top,
+                    keyboard_interactivity: KeyboardInteractivity::OnDemand,
+                    input_zone: None,
+                    anchor: self.config.layout.anchor.to_layer_anchor(),
+                    output: IcedOutput::Active,
+                    namespace: "toodle-calendar".to_string(),
+                    margin: popup_margin,
+                    size: Some((Some(680), Some(720))),
+                    exclusive_zone: 0,
+                    size_limits: Limits::NONE,
+                };
+
+                tasks.push(layer_cmd::get_layer_surface(popup_settings));
                 Task::batch(tasks)
             }
 
             Message::Popup(PopupMessage::OpenForecast) => {
-                info!("Weekly forecast clicked (Phase 3 placeholder)");
                 let mut tasks = Vec::new();
                 if let Some(popup_id) = self.popup_surface_id.take() {
                     tasks.push(layer_cmd::destroy_layer_surface(popup_id));
                 }
+
+                let new_popup_id = SurfaceId::unique();
+                self.popup_surface_id = Some(new_popup_id);
+                self.active_popup = Some(ActivePopup::Forecast);
+
+                let (w_top, w_right, w_bottom, w_left) = self.config.layout.margins();
+                let popup_margin = IcedMargin {
+                    top: w_top + 16,
+                    right: w_right + 16,
+                    bottom: w_bottom + 16,
+                    left: w_left + 16,
+                };
+
+                let popup_settings = SctkLayerSurfaceSettings {
+                    id: new_popup_id,
+                    layer: Layer::Top,
+                    keyboard_interactivity: KeyboardInteractivity::OnDemand,
+                    input_zone: None,
+                    anchor: self.config.layout.anchor.to_layer_anchor(),
+                    output: IcedOutput::Active,
+                    namespace: "toodle-forecast".to_string(),
+                    margin: popup_margin,
+                    size: Some((Some(680), Some(720))),
+                    exclusive_zone: 0,
+                    size_limits: Limits::NONE,
+                };
+
+                tasks.push(layer_cmd::get_layer_surface(popup_settings));
                 Task::batch(tasks)
             }
 
+            Message::Popup(PopupMessage::CalendarPrevMonth) => {
+                if let Some(ActivePopup::Calendar(ref mut state)) = self.active_popup {
+                    state.prev_month();
+                }
+                Task::none()
+            }
+
+            Message::Popup(PopupMessage::CalendarNextMonth) => {
+                if let Some(ActivePopup::Calendar(ref mut state)) = self.active_popup {
+                    state.next_month();
+                }
+                Task::none()
+            }
+
+            Message::Popup(PopupMessage::CalendarToday) => {
+                if let Some(ActivePopup::Calendar(ref mut state)) = self.active_popup {
+                    state.jump_today();
+                }
+                Task::none()
+            }
+
             Message::Popup(PopupMessage::Close) => {
+                self.active_popup = None;
                 if let Some(popup_id) = self.popup_surface_id.take() {
                     layer_cmd::destroy_layer_surface(popup_id)
                 } else {
@@ -333,6 +421,7 @@ impl Application for ToodleApp {
                 if let Some(popup_id) = self.popup_surface_id.take() {
                     tasks.push(layer_cmd::destroy_layer_surface(popup_id));
                 }
+                self.active_popup = None;
 
                 self.state = WidgetState::Normal;
                 let (top, right, bottom, left) = self.config.layout.margins();
@@ -481,7 +570,16 @@ impl Application for ToodleApp {
             )
             .map(Message::Widget)
         } else if Some(id) == self.popup_surface_id {
-            popup::view_context_menu().map(Message::Popup)
+            match &self.active_popup {
+                Some(ActivePopup::ContextMenu) => popup::view_context_menu().map(Message::Popup),
+                Some(ActivePopup::Calendar(cal_state)) => {
+                    popup::view_calendar(cal_state).map(Message::Popup)
+                }
+                Some(ActivePopup::Forecast) => {
+                    popup::view_forecast(&self.config, self.weather.as_ref()).map(Message::Popup)
+                }
+                None => cosmic::widget::text("").into(),
+            }
         } else if Some(id) == self.edit_panel_surface_id {
             if let WidgetState::Edit(edit_state) = &self.state {
                 edit_state.view().map(Message::Edit)
