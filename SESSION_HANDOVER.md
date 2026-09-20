@@ -258,4 +258,8 @@ cargo build --release
 4. **`SESSION_HANDOVER.md` に変更理由と作業履歴を記録する**。
 5. **`README.md` / `README.ja.md` / `docs/ARCHITECTURE.*` / `docs/FEATURES.*` の公開説明も同時に更新する**（日英の対称性を厳格に維持）。
 
+- **サードパーティライセンス記録の保護**:
+  > Do not modify `THIRD_PARTY_LICENSES/**` unless explicitly requested.  
+  > Treat `THIRD_PARTY_LICENSES/**` as audit/legal dependency records.
+
 > **重要原則**: **「設計とコードが違う」ことだけを理由にコードを旧設計へ戻さない。** 実機検証によって確定した挙動を新しい設計の基準とし、必要な場合のみ設計変更として文書化すること。
