@@ -10,7 +10,6 @@ use cosmic::iced::runtime::core::layout::Limits;
 use cosmic::iced::window::Id as SurfaceId;
 use cosmic::iced::{Event, Subscription};
 use cosmic::{Application, Element};
-use std::time::Duration;
 use tracing::info;
 
 use toodle::config::Config;
@@ -95,6 +94,14 @@ impl Application for ToodleApp {
 
         let create_widget_task = layer_cmd::get_layer_surface(widget_settings);
 
+        // Load embedded fonts on startup
+        let load_fonts_tasks: Vec<_> = toodle::clock::fonts::embedded_fonts()
+            .into_iter()
+            .map(|bytes| cosmic::iced::font::load(bytes).discard())
+            .collect();
+
+        let initial_tasks = Task::batch(std::iter::once(create_widget_task).chain(load_fonts_tasks));
+
         let app = Self {
             core,
             config,
@@ -104,7 +111,7 @@ impl Application for ToodleApp {
             edit_panel_surface_id: None,
         };
 
-        (app, create_widget_task)
+        (app, initial_tasks)
     }
 
     fn update(&mut self, message: Self::Message) -> Task<Self::Message> {
@@ -366,7 +373,8 @@ impl Application for ToodleApp {
     }
 
     fn subscription(&self) -> Subscription<Self::Message> {
-        let tick = cosmic::iced::time::every(Duration::from_millis(500)).map(|_| Message::Tick);
+        let tick = cosmic::iced::Subscription::run(toodle::clock::next_second_tick)
+            .map(|_| Message::Tick);
         let watcher = cosmic::iced::Subscription::run(Config::watch).map(Message::ConfigReloaded);
 
         // Filter events strictly to avoid flooding the message queue with cursor movements!

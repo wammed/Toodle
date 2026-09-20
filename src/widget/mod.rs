@@ -36,11 +36,24 @@ pub fn view_widget<'a, Message: From<WidgetMessage> + Clone + 'static>(
     let time_size = (36.0 * font_scale).round() as u16;
     let date_size = (14.0 * font_scale).round() as u16;
 
-    let time_text = text(time_str).size(time_size);
-    let date_text = text(date_str).size(date_size);
+    let (time_font, date_font) = if config.appearance.theme.to_lowercase().contains("mono")
+        || config.appearance.theme.to_lowercase().contains("digital")
+    {
+        (crate::clock::fonts::FONT_MONO_BOLD, crate::clock::fonts::FONT_MONO_REGULAR)
+    } else {
+        (crate::clock::fonts::FONT_ROBOTO_BOLD, crate::clock::fonts::FONT_ROBOTO_REGULAR)
+    };
+
+    let time_text = text(time_str)
+        .font(time_font)
+        .size(time_size);
+
+    let date_text = text(date_str)
+        .font(date_font)
+        .size(date_size);
 
     let content = column![time_text, date_text]
-        .spacing(4)
+        .spacing(6)
         .align_x(Alignment::Start);
 
     if is_editing {
