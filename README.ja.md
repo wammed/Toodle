@@ -2,7 +2,7 @@
 
 > **System76 COSMIC Desktop Environment 向け モダン・デジタルクロックウィジェット**
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![License: GPL-3.0-or-later](https://img.shields.io/badge/License-GPL--3.0--or--later-blue.svg)](LICENSE)
 [![Rust](https://img.shields.io/badge/Rust-2021%20Edition-orange.svg)](https://www.rust-lang.org/)
 [![COSMIC](https://img.shields.io/badge/Desktop-COSMIC-purple.svg)](https://github.com/pop-os/cosmic-epoch)
 [![Wayland](https://img.shields.io/badge/Protocol-wlr--layer--shell-green.svg)](https://wayland.freedesktop.org/)
@@ -158,4 +158,4 @@ temperature_unit = "Celsius" # Celsius, Fahrenheit
 
 ## ライセンス
 
-本プロジェクトは [MIT License](LICENSE) の下で公開されています。
+本プロジェクトは [GPL-3.0-or-later](LICENSE) の下で公開されています。

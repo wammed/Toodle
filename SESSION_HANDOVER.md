@@ -22,6 +22,7 @@
   - 設定ファイル監視: `notify` (inotify による `config.toml` 非同期ホットリロード)
   - 天気 API / キャッシュ: `reqwest`, `tokio`, `serde`, `serde_json`, `chrono` (Open-Meteo REST API, 2段階ローカル永続キャッシュ)
   - 組み込みフォント: `Roboto`, `JetBrains Mono`, `DejaVu Serif`, `Open Sans` (`include_bytes!` による完全スタンドアロンバイナリ、外部フォント非依存)
+- **ライセンス**: `GPL-3.0-or-later` ([LICENSE](LICENSE))
 
 ---
 
