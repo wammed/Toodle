@@ -8,15 +8,26 @@ use tracing::{info, warn};
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CachedWeather {
     pub cached_at: DateTime<Utc>,
+    #[serde(default)]
+    pub latitude: f64,
+    #[serde(default)]
+    pub longitude: f64,
     pub data: WeatherData,
 }
 
 impl CachedWeather {
-    pub fn new(data: WeatherData) -> Self {
+    pub fn new(data: WeatherData, latitude: f64, longitude: f64) -> Self {
         Self {
             cached_at: Utc::now(),
+            latitude,
+            longitude,
             data,
         }
+    }
+
+    /// Check if coordinates are close enough (within ~2km / 0.02 deg)
+    pub fn is_location_match(&self, lat: f64, lon: f64) -> bool {
+        (self.latitude - lat).abs() < 0.02 && (self.longitude - lon).abs() < 0.02
     }
 
     /// Current weather cache valid for 30 minutes (Design Doc Sec 13)
@@ -97,8 +108,10 @@ mod tests {
             daily: Vec::new(),
         };
 
-        let cached = CachedWeather::new(data);
+        let cached = CachedWeather::new(data, 35.6895, 139.6917);
         assert!(cached.is_current_valid());
         assert!(cached.is_forecast_valid());
+        assert!(cached.is_location_match(35.6895, 139.6917));
+        assert!(!cached.is_location_match(51.5074, -0.1278));
     }
 }

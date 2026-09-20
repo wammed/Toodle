@@ -276,8 +276,17 @@ impl Application for ToodleApp {
                     tasks.push(layer_cmd::destroy_layer_surface(popup_id));
                 }
                 self.active_popup = None;
+                let spawn_res = std::env::current_exe()
+                    .ok()
+                    .and_then(|p| p.parent().map(|dir| dir.join("toodle-settings")))
+                    .filter(|p| p.exists())
+                    .map(|exe| std::process::Command::new(exe).spawn())
+                    .unwrap_or_else(|| std::process::Command::new("toodle-settings").spawn());
 
-                let _ = std::process::Command::new("toodle-settings").spawn();
+                if let Err(e) = spawn_res {
+                    tracing::warn!("Failed to launch toodle-settings: {}", e);
+                }
+
                 Task::batch(tasks)
             }
 
@@ -493,14 +502,16 @@ impl Application for ToodleApp {
                 }
 
                 info!("Config reloaded via file watcher from external change");
-                let location_changed = self.config.weather.latitude != new_config.weather.latitude
-                    || self.config.weather.longitude != new_config.weather.longitude;
+                let location_changed = (self.config.weather.latitude - new_config.weather.latitude).abs() > 0.0001
+                    || (self.config.weather.longitude - new_config.weather.longitude).abs() > 0.0001;
 
                 self.config = new_config;
 
                 let mut tasks = Vec::new();
 
                 if location_changed {
+                    self.weather = None;
+                    self.weather_error = false;
                     let s = self.weather_service.clone();
                     let lat = self.config.weather.latitude;
                     let lon = self.config.weather.longitude;

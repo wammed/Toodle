@@ -49,13 +49,8 @@ pub fn view_widget<'a, Message: From<WidgetMessage> + Clone + 'static>(
     let time_size = (36.0 * font_scale).round() as u16;
     let date_size = (14.0 * font_scale).round() as u16;
 
-    let (time_font, date_font) = if config.appearance.theme.to_lowercase().contains("mono")
-        || config.appearance.theme.to_lowercase().contains("digital")
-    {
-        (crate::clock::fonts::FONT_MONO_BOLD, crate::clock::fonts::FONT_MONO_REGULAR)
-    } else {
-        (crate::clock::fonts::FONT_ROBOTO_BOLD, crate::clock::fonts::FONT_ROBOTO_REGULAR)
-    };
+    let (time_font, date_font) =
+        crate::config::theme::get_font_pair_for_theme(&config.appearance.theme);
 
     let time_text = text(time_str)
         .font(time_font)
@@ -78,6 +73,19 @@ pub fn view_widget<'a, Message: From<WidgetMessage> + Clone + 'static>(
         .font(date_font)
         .size(date_size);
 
+    let widget_text_color = crate::config::parse_hex_color(&config.appearance.color)
+        .unwrap_or(Color::WHITE);
+
+    let text_shadow = if config.appearance.text_shadow {
+        Shadow {
+            color: Color::from_rgba(0.0, 0.0, 0.0, 0.65),
+            offset: cosmic::iced::Vector::new(1.0, 2.0),
+            blur_radius: 6.0,
+        }
+    } else {
+        Shadow::default()
+    };
+
     let content = column![time_text, date_text, weather_text]
         .spacing(6)
         .align_x(Alignment::Start);
@@ -88,15 +96,15 @@ pub fn view_widget<'a, Message: From<WidgetMessage> + Clone + 'static>(
             .padding(12)
             .width(Length::Fill)
             .height(Length::Fill)
-            .style(|_theme| container::Style {
+            .style(move |_theme| container::Style {
                 background: Some(Color::from_rgba(0.2, 0.4, 0.8, 0.15).into()),
                 border: Border {
                     color: Color::from_rgb(0.35, 0.65, 1.0),
                     width: 2.0,
                     radius: 8.0.into(),
                 },
-                shadow: Shadow::default(),
-                text_color: Some(Color::WHITE),
+                shadow: text_shadow,
+                text_color: Some(widget_text_color),
                 ..Default::default()
             })
             .into()
@@ -106,8 +114,10 @@ pub fn view_widget<'a, Message: From<WidgetMessage> + Clone + 'static>(
             .padding(12)
             .width(Length::Fill)
             .height(Length::Fill)
-            .style(|_theme| container::Style {
+            .style(move |_theme| container::Style {
                 background: None,
+                text_color: Some(widget_text_color),
+                shadow: text_shadow,
                 ..Default::default()
             });
 

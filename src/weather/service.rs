@@ -43,8 +43,8 @@ impl WeatherService {
 
         // 1. Check local persistent cache
         if let Some(cached) = WeatherCache::load_from(&cache_p) {
-            if cached.is_current_valid() {
-                info!("Using fresh weather cache (< 30 minutes old)");
+            if cached.is_location_match(lat, lon) && cached.is_current_valid() {
+                info!("Using fresh weather cache (< 30 minutes old) for ({}, {})", lat, lon);
                 return Ok(cached.data);
             }
         }
@@ -52,16 +52,18 @@ impl WeatherService {
         // 2. Fetch fresh weather from provider
         match self.provider.fetch_weather(lat, lon).await {
             Ok(data) => {
-                let cached = CachedWeather::new(data.clone());
+                let cached = CachedWeather::new(data.clone(), lat, lon);
                 let _ = WeatherCache::save_to(&cached, &cache_p);
                 Ok(data)
             }
             Err(err) => {
                 warn!("Weather fetch failed: {}. Checking for stale cache fallback...", err);
-                // 3. Fallback to last available cache if available (Sec 13)
+                // 3. Fallback to last available cache if available for this location (Sec 13)
                 if let Some(stale) = WeatherCache::load_from(&cache_p) {
-                    info!("Using stale weather cache as offline fallback");
-                    return Ok(stale.data);
+                    if stale.is_location_match(lat, lon) {
+                        info!("Using stale weather cache as offline fallback for ({}, {})", lat, lon);
+                        return Ok(stale.data);
+                    }
                 }
                 // 4. No cache available -> Weather unavailable (Sec 13)
                 Err(err)
@@ -139,10 +141,15 @@ mod tests {
         assert_eq!(data.current.temperature_celsius, 18.5);
         assert_eq!(mock.call_count.load(Ordering::SeqCst), 1);
 
-        // Immediate second call should use cache and not increment call count
+        // Immediate second call for SAME location should use cache and not increment call count
         let result2 = service.get_weather(35.68, 139.69).await;
         assert!(result2.is_ok());
         assert_eq!(mock.call_count.load(Ordering::SeqCst), 1);
+
+        // Different location (e.g. London) must NOT use Tokyo's cache and must fetch fresh
+        let result_london = service.get_weather(51.5074, -0.1278).await;
+        assert!(result_london.is_ok());
+        assert_eq!(mock.call_count.load(Ordering::SeqCst), 2);
 
         let _ = std::fs::remove_file(&temp_cache);
         let _ = std::fs::remove_dir(&temp_dir);

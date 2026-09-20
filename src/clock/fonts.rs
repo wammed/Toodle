@@ -5,6 +5,10 @@ pub const ROBOTO_REGULAR_BYTES: &[u8] = include_bytes!("../../resources/fonts/Ro
 pub const ROBOTO_BOLD_BYTES: &[u8] = include_bytes!("../../resources/fonts/Roboto-Bold.ttf");
 pub const JETBRAINS_REGULAR_BYTES: &[u8] = include_bytes!("../../resources/fonts/JetBrainsMono-Regular.ttf");
 pub const JETBRAINS_BOLD_BYTES: &[u8] = include_bytes!("../../resources/fonts/JetBrainsMono-Bold.ttf");
+pub const DEJAVUSERIF_REGULAR_BYTES: &[u8] = include_bytes!("../../resources/fonts/DejaVuSerif-Regular.ttf");
+pub const DEJAVUSERIF_BOLD_BYTES: &[u8] = include_bytes!("../../resources/fonts/DejaVuSerif-Bold.ttf");
+pub const OPENSANS_REGULAR_BYTES: &[u8] = include_bytes!("../../resources/fonts/OpenSans-Regular.ttf");
+pub const OPENSANS_BOLD_BYTES: &[u8] = include_bytes!("../../resources/fonts/OpenSans-Bold.ttf");
 
 pub const FONT_ROBOTO_REGULAR: Font = Font {
     family: Family::Name("Roboto"),
@@ -30,6 +34,30 @@ pub const FONT_MONO_BOLD: Font = Font {
     ..Font::DEFAULT
 };
 
+pub const FONT_SERIF_REGULAR: Font = Font {
+    family: Family::Name("DejaVu Serif"),
+    weight: Weight::Normal,
+    ..Font::DEFAULT
+};
+
+pub const FONT_SERIF_BOLD: Font = Font {
+    family: Family::Name("DejaVu Serif"),
+    weight: Weight::Bold,
+    ..Font::DEFAULT
+};
+
+pub const FONT_OPENSANS_REGULAR: Font = Font {
+    family: Family::Name("Open Sans"),
+    weight: Weight::Normal,
+    ..Font::DEFAULT
+};
+
+pub const FONT_OPENSANS_BOLD: Font = Font {
+    family: Family::Name("Open Sans"),
+    weight: Weight::Bold,
+    ..Font::DEFAULT
+};
+
 /// Returns all embedded fonts to be loaded into Iced at startup
 pub fn embedded_fonts() -> Vec<Cow<'static, [u8]>> {
     vec![
@@ -37,5 +65,9 @@ pub fn embedded_fonts() -> Vec<Cow<'static, [u8]>> {
         Cow::Borrowed(ROBOTO_BOLD_BYTES),
         Cow::Borrowed(JETBRAINS_REGULAR_BYTES),
         Cow::Borrowed(JETBRAINS_BOLD_BYTES),
+        Cow::Borrowed(DEJAVUSERIF_REGULAR_BYTES),
+        Cow::Borrowed(DEJAVUSERIF_BOLD_BYTES),
+        Cow::Borrowed(OPENSANS_REGULAR_BYTES),
+        Cow::Borrowed(OPENSANS_BOLD_BYTES),
     ]
 }

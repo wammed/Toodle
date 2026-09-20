@@ -1,7 +1,11 @@
+pub mod theme;
+
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::PathBuf;
 use tracing::{info, warn};
+
+pub use theme::{parse_hex_color, COLOR_PALETTE_16, THEME_PRESETS};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Config {
@@ -260,8 +264,8 @@ impl Config {
                 while let Ok(event) = std_rx.recv() {
                     if let Ok(event) = event {
                         if event.paths.iter().any(|p| p.file_name() == path.file_name()) {
-                            // Small delay to ensure write is flushed
-                            std::thread::sleep(std::time::Duration::from_millis(100));
+                            // Small delay to ensure atomic rename write is flushed
+                            std::thread::sleep(std::time::Duration::from_millis(25));
                             let cfg = Config::load();
                             if tx.unbounded_send(cfg).is_err() {
                                 break;
