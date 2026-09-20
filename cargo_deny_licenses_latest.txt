@@ -1,0 +1,246 @@
+warning[no-license-field]: license expression was not specified in manifest for crate 'apply = 0.3.0'
+ ├ apply v0.3.0
+   └── libcosmic v1.0.0
+       └── toodle v0.2.0
+
+warning[no-license-field]: license expression was not specified in manifest for crate 'cosmic-config = 1.0.0'
+ ├ cosmic-config v1.0.0
+   ├── cosmic-theme v1.0.0
+   │   └── libcosmic v1.0.0
+   │       └── toodle v0.2.0
+   └── libcosmic v1.0.0 (*)
+
+warning[unlicensed]: a valid license expression could not be retrieved for the crate
+  ┌─ git+https://github.com/pop-os/libcosmic#cosmic-config@1.0.0-synthesized.toml:2:9
+  │
+2 │ name = "cosmic-config"
+  │         ━━━━━━━━━━━━━
+  │
+  ├ cosmic-config v1.0.0 (*)
+
+error[unlicensed]: cosmic-config = 1.0.0 is unlicensed
+ ├ cosmic-config v1.0.0 (*)
+
+warning[no-license-field]: license expression was not specified in manifest for crate 'cosmic-config-derive = 1.0.0'
+ ├ cosmic-config-derive v1.0.0
+   └── cosmic-config v1.0.0
+       ├── cosmic-theme v1.0.0
+       │   └── libcosmic v1.0.0
+       │       └── toodle v0.2.0
+       └── libcosmic v1.0.0 (*)
+
+warning[unlicensed]: a valid license expression could not be retrieved for the crate
+  ┌─ git+https://github.com/pop-os/libcosmic#cosmic-config-derive@1.0.0-synthesized.toml:2:9
+  │
+2 │ name = "cosmic-config-derive"
+  │         ━━━━━━━━━━━━━━━━━━━━
+  │
+  ├ cosmic-config-derive v1.0.0 (*)
+
+error[unlicensed]: cosmic-config-derive = 1.0.0 is unlicensed
+ ├ cosmic-config-derive v1.0.0 (*)
+
+warning[no-license-field]: license expression was not specified in manifest for crate 'cosmic-settings-daemon = 0.1.0'
+ ├ cosmic-settings-daemon v0.1.0
+   ├── cosmic-config v1.0.0
+   │   ├── cosmic-theme v1.0.0
+   │   │   └── libcosmic v1.0.0
+   │   │       └── toodle v0.2.0
+   │   └── libcosmic v1.0.0 (*)
+   └── libcosmic v1.0.0 (*)
+
+warning[unlicensed]: a valid license expression could not be retrieved for the crate
+  ┌─ git+https://github.com/pop-os/dbus-settings-bindings#cosmic-settings-daemon@0.1.0-synthesized.toml:2:9
+  │
+2 │ name = "cosmic-settings-daemon"
+  │         ━━━━━━━━━━━━━━━━━━━━━━
+  │
+  ├ cosmic-settings-daemon v0.1.0 (*)
+
+error[unlicensed]: cosmic-settings-daemon = 0.1.0 is unlicensed
+ ├ cosmic-settings-daemon v0.1.0 (*)
+
+warning[no-license-field]: license expression was not specified in manifest for crate 'cosmic-theme = 1.0.0'
+ ├ cosmic-theme v1.0.0
+   └── libcosmic v1.0.0
+       └── toodle v0.2.0
+
+warning[unlicensed]: a valid license expression could not be retrieved for the crate
+  ┌─ git+https://github.com/pop-os/libcosmic#cosmic-theme@1.0.0-synthesized.toml:2:9
+  │
+2 │ name = "cosmic-theme"
+  │         ━━━━━━━━━━━━
+  │
+  ├ cosmic-theme v1.0.0 (*)
+
+error[unlicensed]: cosmic-theme = 1.0.0 is unlicensed
+ ├ cosmic-theme v1.0.0 (*)
+
+warning[no-license-field]: license expression was not specified in manifest for crate 'dnd = 0.1.0'
+ ├ dnd v0.1.0
+   ├── clipboard_wayland v0.2.2
+   │   └── window_clipboard v0.4.1
+   │       ├── iced v0.14.0
+   │       │   └── libcosmic v1.0.0
+   │       │       └── toodle v0.2.0
+   │       ├── iced_core v0.14.0
+   │       │   ├── iced v0.14.0 (*)
+   │       │   ├── iced_debug v0.14.0
+   │       │   │   ├── iced v0.14.0 (*)
+   │       │   │   ├── iced_tiny_skia v0.14.0
+   │       │   │   │   ├── iced_renderer v0.14.0
+   │       │   │   │   │   ├── iced v0.14.0 (*)
+   │       │   │   │   │   ├── iced_widget v0.14.2
+   │       │   │   │   │   │   ├── iced v0.14.0 (*)
+   │       │   │   │   │   │   └── libcosmic v1.0.0 (*)
+   │       │   │   │   │   └── libcosmic v1.0.0 (*)
+   │       │   │   │   └── libcosmic v1.0.0 (*)
+   │       │   │   ├── iced_wgpu v0.14.0
+   │       │   │   │   └── libcosmic v1.0.0 (*)
+   │       │   │   └── iced_winit v0.14.0
+   │       │   │       ├── iced v0.14.0 (*)
+   │       │   │       └── libcosmic v1.0.0 (*)
+   │       │   ├── iced_futures v0.14.0
+   │       │   │   ├── cosmic-config v1.0.0
+   │       │   │   │   ├── cosmic-theme v1.0.0
+   │       │   │   │   │   └── libcosmic v1.0.0 (*)
+   │       │   │   │   └── libcosmic v1.0.0 (*)
+   │       │   │   ├── iced v0.14.0 (*)
+   │       │   │   ├── iced_debug v0.14.0 (*)
+   │       │   │   ├── iced_graphics v0.14.0
+   │       │   │   │   ├── iced_program v0.14.0
+   │       │   │   │   │   ├── iced v0.14.0 (*)
+   │       │   │   │   │   └── iced_winit v0.14.0 (*)
+   │       │   │   │   ├── iced_renderer v0.14.0 (*)
+   │       │   │   │   ├── iced_tiny_skia v0.14.0 (*)
+   │       │   │   │   ├── iced_wgpu v0.14.0 (*)
+   │       │   │   │   └── iced_winit v0.14.0 (*)
+   │       │   │   ├── iced_runtime v0.14.0
+   │       │   │   │   ├── iced v0.14.0 (*)
+   │       │   │   │   ├── iced_program v0.14.0 (*)
+   │       │   │   │   ├── iced_widget v0.14.2 (*)
+   │       │   │   │   ├── iced_winit v0.14.0 (*)
+   │       │   │   │   └── libcosmic v1.0.0 (*)
+   │       │   │   ├── iced_winit v0.14.0 (*)
+   │       │   │   └── libcosmic v1.0.0 (*)
+   │       │   ├── iced_graphics v0.14.0 (*)
+   │       │   ├── iced_runtime v0.14.0 (*)
+   │       │   └── libcosmic v1.0.0 (*)
+   │       ├── iced_runtime v0.14.0 (*)
+   │       ├── iced_widget v0.14.2 (*)
+   │       └── iced_winit v0.14.0 (*)
+   ├── iced v0.14.0 (*)
+   ├── iced_core v0.14.0 (*)
+   ├── iced_runtime v0.14.0 (*)
+   ├── iced_widget v0.14.2 (*)
+   ├── iced_winit v0.14.0 (*)
+   └── window_clipboard v0.4.1 (*)
+
+warning[unlicensed]: a valid license expression could not be retrieved for the crate
+  ┌─ git+https://github.com/pop-os/window_clipboard.git?tag=sctk-0.20#dnd@0.1.0-synthesized.toml:2:9
+  │
+2 │ name = "dnd"
+  │         ━━━
+  │
+  ├ dnd v0.1.0 (*)
+
+error[unlicensed]: dnd = 0.1.0 is unlicensed
+ ├ dnd v0.1.0 (*)
+
+warning[no-license-field]: license expression was not specified in manifest for crate 'libcosmic = 1.0.0'
+ ├ libcosmic v1.0.0
+   └── toodle v0.2.0
+
+warning[no-license-field]: license expression was not specified in manifest for crate 'mime = 0.1.0'
+ ├ mime v0.1.0
+   ├── clipboard_wayland v0.2.2
+   │   └── window_clipboard v0.4.1
+   │       ├── iced v0.14.0
+   │       │   └── libcosmic v1.0.0
+   │       │       └── toodle v0.2.0
+   │       ├── iced_core v0.14.0
+   │       │   ├── iced v0.14.0 (*)
+   │       │   ├── iced_debug v0.14.0
+   │       │   │   ├── iced v0.14.0 (*)
+   │       │   │   ├── iced_tiny_skia v0.14.0
+   │       │   │   │   ├── iced_renderer v0.14.0
+   │       │   │   │   │   ├── iced v0.14.0 (*)
+   │       │   │   │   │   ├── iced_widget v0.14.2
+   │       │   │   │   │   │   ├── iced v0.14.0 (*)
+   │       │   │   │   │   │   └── libcosmic v1.0.0 (*)
+   │       │   │   │   │   └── libcosmic v1.0.0 (*)
+   │       │   │   │   └── libcosmic v1.0.0 (*)
+   │       │   │   ├── iced_wgpu v0.14.0
+   │       │   │   │   └── libcosmic v1.0.0 (*)
+   │       │   │   └── iced_winit v0.14.0
+   │       │   │       ├── iced v0.14.0 (*)
+   │       │   │       └── libcosmic v1.0.0 (*)
+   │       │   ├── iced_futures v0.14.0
+   │       │   │   ├── cosmic-config v1.0.0
+   │       │   │   │   ├── cosmic-theme v1.0.0
+   │       │   │   │   │   └── libcosmic v1.0.0 (*)
+   │       │   │   │   └── libcosmic v1.0.0 (*)
+   │       │   │   ├── iced v0.14.0 (*)
+   │       │   │   ├── iced_debug v0.14.0 (*)
+   │       │   │   ├── iced_graphics v0.14.0
+   │       │   │   │   ├── iced_program v0.14.0
+   │       │   │   │   │   ├── iced v0.14.0 (*)
+   │       │   │   │   │   └── iced_winit v0.14.0 (*)
+   │       │   │   │   ├── iced_renderer v0.14.0 (*)
+   │       │   │   │   ├── iced_tiny_skia v0.14.0 (*)
+   │       │   │   │   ├── iced_wgpu v0.14.0 (*)
+   │       │   │   │   └── iced_winit v0.14.0 (*)
+   │       │   │   ├── iced_runtime v0.14.0
+   │       │   │   │   ├── iced v0.14.0 (*)
+   │       │   │   │   ├── iced_program v0.14.0 (*)
+   │       │   │   │   ├── iced_widget v0.14.2 (*)
+   │       │   │   │   ├── iced_winit v0.14.0 (*)
+   │       │   │   │   └── libcosmic v1.0.0 (*)
+   │       │   │   ├── iced_winit v0.14.0 (*)
+   │       │   │   └── libcosmic v1.0.0 (*)
+   │       │   ├── iced_graphics v0.14.0 (*)
+   │       │   ├── iced_runtime v0.14.0 (*)
+   │       │   └── libcosmic v1.0.0 (*)
+   │       ├── iced_runtime v0.14.0 (*)
+   │       ├── iced_widget v0.14.2 (*)
+   │       └── iced_winit v0.14.0 (*)
+   ├── dnd v0.1.0
+   │   ├── clipboard_wayland v0.2.2 (*)
+   │   ├── iced v0.14.0 (*)
+   │   ├── iced_core v0.14.0 (*)
+   │   ├── iced_runtime v0.14.0 (*)
+   │   ├── iced_widget v0.14.2 (*)
+   │   ├── iced_winit v0.14.0 (*)
+   │   └── window_clipboard v0.4.1 (*)
+   ├── iced v0.14.0 (*)
+   ├── iced_core v0.14.0 (*)
+   └── window_clipboard v0.4.1 (*)
+
+warning[unlicensed]: a valid license expression could not be retrieved for the crate
+  ┌─ git+https://github.com/pop-os/window_clipboard.git?tag=sctk-0.20#mime@0.1.0-synthesized.toml:2:9
+  │
+2 │ name = "mime"
+  │         ━━━━
+  │
+  ├ mime v0.1.0 (*)
+
+error[unlicensed]: mime = 0.1.0 is unlicensed
+ ├ mime v0.1.0 (*)
+
+error[rejected]: failed to satisfy license requirements
+   ┌─ /home/susie/.cargo/registry/src/index.crates.io-1949cf8c6b5b557f/webpki-roots-1.0.9/Cargo.toml:26:12
+   │
+26 │ license = "CDLA-Permissive-2.0"
+   │            ━━━━━━━━━━━━━━━━━━━
+   │            │
+   │            rejected: license is not explicitly allowed
+   │
+   ├ CDLA-Permissive-2.0 - Community Data License Agreement Permissive 2.0:
+   ├   - No additional metadata available for license
+   ├ webpki-roots v1.0.9
+     ├── hyper-rustls v0.27.9
+     │   └── reqwest v0.12.28
+     │       └── toodle v0.2.0
+     └── reqwest v0.12.28 (*)
+
+licenses FAILED
