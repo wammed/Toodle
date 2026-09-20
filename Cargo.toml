@@ -1,0 +1,32 @@
+[package]
+name = "toodle"
+version = "0.2.0"
+edition = "2024"
+license = "GPL-3.0-or-later"
+
+[[bin]]
+name = "toodle"
+path = "src/main.rs"
+
+[[bin]]
+name = "toodle-settings"
+path = "src/settings/main.rs"
+
+[dependencies]
+libcosmic = { git = "https://github.com/pop-os/libcosmic", default-features = false, features = [
+    "autosize",
+    "tokio",
+    "wayland",
+    "multi-window",
+    "winit",
+    "single-instance",
+] }
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1.0", features = ["derive"] }
+toml = "0.8"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+notify = "6.1"
+chrono = { version = "0.4", features = ["serde"] }
+dirs = "5.0"
+futures = "0.3"
