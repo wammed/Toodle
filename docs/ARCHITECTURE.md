@@ -86,10 +86,22 @@ This guarantees instantaneous 0ms visual updates with zero compositor redraw fli
 ### 2.4 Edit Layout Architecture (Two-Surface Model, Design Doc Sec 7)
 Rather than morphing the main widget into an editing interface, Toodle separates presentation from interaction:
 - **Bottom Surface**: The actual running `Toodle` widget on `Layer::Bottom`.
-- **Top Surface**: An independent `Edit Layout Panel` on `Layer::Top` providing controls for Anchor, Margin X/Y, Width, Height, Font Scale, Save, and Cancel.
+- **Top Surface**: An independent `Edit Layout Panel` on `Layer::Top` providing a 3×3 grid position button matrix, a 10-stage size selection matrix (Stages 1..=5 and 6..=10), Save, and Cancel.
 - Moving controls in the top panel sends live layer surface commands to the bottom surface.
 - **Save**: Commits values to `config.toml`, closes the panel, and restores normal input bounds.
 - **Cancel**: Discards edits, reverts the bottom surface via layer commands, and closes the panel.
+
+### 2.5 9-Zone Display Layout & 10 Discrete Size Stages (WQHD Support)
+To eliminate redraw flicker and ghosting/blur artifacts caused by continuous slider resizing, Toodle uses a structured 9-zone display layout and discrete size stages:
+- **9-Zone Display Grid (`GridPosition`)**:
+  - `TopLeft`, `TopCenter`, `TopRight`, `MiddleLeft`, `Center`, `MiddleRight`, `BottomLeft`, `BottomCenter`, `BottomRight`.
+  - Outer screen gutter is fixed at `32px`. Center alignment mathematically positions the window at `((screen_w - w) / 2).max(gutter)` and `((screen_h - h) / 2).max(gutter)`.
+  - Content horizontal alignment (`align_x`) adapts dynamically: left positions align left (`Alignment::Start`), center positions center horizontally (`Alignment::Center`), and right positions align right (`Alignment::End`).
+  - Container vertical alignment (`align_y`) is unified to `Alignment::Start` (top padding), preventing downward sagging when anchored to the screen bottom.
+- **10 Discrete Size Stages (`SIZE_STAGES`)**:
+  - Predefined dimensions tailored for displays up to WQHD 2560×1440 (Stage 1: 280×130 up to Stage 10: 2060×920).
+  - Window heights are sized with generous headroom to fully enclose oversized typography (clock size: 38..310px, date/weather size: 14..110px) and weather icon bounding boxes, preventing any bottom clipping.
+  - Window dimensions and font sizes synchronize 1:1, eliminating the need for a separate font scale slider.
 
 ---
 
@@ -228,3 +240,17 @@ The following areas are explicitly documented as known gaps between the v0.3 des
 3. **HTTP Exponential Backoff**: Automatic retry backoff for HTTP 429/5xx is not yet implemented.
 4. **Geocoding**: City presets and manual coordinates are supported; automatic name-to-coordinate lookup is planned for Phase 5.
 5. **Popup Dismissal**: Outside-click and focus-loss dismiss behavior are awaiting compositor event verification and formalization.
+
+---
+
+## 8. Build & Local Install Separation (`tools/install-local.sh`)
+
+Toodle enforces a clear separation between compilation and local system modifications:
+- **`cargo build --release`**:
+  - Compiles the Rust binaries only.
+  - Does not alter the user environment (no auto-copy to `$HOME/.local/bin`).
+- **`./tools/install-local.sh`**:
+  - Explicitly executed by the developer to build and copy release binaries into `$HOME/.local/bin`.
+- **Future Packaging**:
+  - Provides a clean architecture ready for distribution packaging (`.deb`, RPM, Arch PKGBUILD) as decoupled pipelines.
+

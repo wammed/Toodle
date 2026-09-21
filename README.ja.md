@@ -22,8 +22,10 @@
   - 月間カレンダー（680 x 720、滑らかな月送り、「今日」ハイライト）。
   - 7日間週間天気予報（680 x 720、天候アイコン、気温幅、降水確率）。
   - デスクトップ壁紙に左右されないソリッドダーク背景スタイリング。
-- **2 サーフェス Edit Layout モード**: `Layer::Top` の独立 `Edit Layout Panel` と `Layer::Bottom` のウィジェット本体が連携。サーフェスの再生成を行わないインプレース更新により、チラつきゼロでリアルタイムに変形。
-- **独立設定アプリ (`toodle-settings`)**: ネイティブ XDG Toplevel ウィンドウ（720 x 780、ソリッドダーク背景）。4 タブ構成（Appearance, Layout, Weather, Display）、リアルタイム自動保存、10 テーマプリセット、16 色カラーパレット、クイック都市選択。
+- **9分割グリッド配置 & 10段階固定サイズ（WQHD対応）**: ディスプレイを 3×3（TopLeft〜BottomRight）に分割する直感的な配置と、WQHD まで最適化された 10 段階のサイズプリセット（280px〜2060px）。フォントサイズ（時刻・日付・天候）がウィンドウ寸法に完全連動し、十分なヘッドルーム設計により文字や天候アイコンの下部見切れを完全防止。
+- **2 サーフェス Edit Layout モード**: `Layer::Top` の独立 `Edit Layout Panel`（9分割位置ボタン・10段階サイズ選択ボタン）と `Layer::Bottom` のウィジェット本体が連携。インプレース Layer Command により、チラつきゼロでリアルタイムに変形。
+- **独立設定アプリ (`toodle-settings`)**: ネイティブ XDG Toplevel ウィンドウ（720 x 780、ソリッドダーク背景）。4 タブ構成（Appearance, Layout, Weather, Display）、リアルタイム自動保存、10 テーマプリセット、16 色カラーパレット、9分割配置・10段階サイズセレクタ、クイック都市選択。
+- **明確に分離されたビルド・インストール構造**: `cargo build --release` はバイナリ生成のみを担当し、ユーザー環境（`$HOME/.local/bin`）への反映は明示的な `./tools/install-local.sh` に分離。将来のディストリビューションパッケージング（.deb, RPM, AUR 等）とも整合。
 - **inotify 設定ホットリロード**: `~/.config/toodle/config.toml` の変更を 25ms で高速検知し、ウィジェットへ即座に反映。
 - **バイナリ完全組み込みフォント**: Roboto Sans, JetBrains Mono, DejaVu Serif, Open Sans および Weather Icons を `include_bytes!` で静的組み込み。天気アイコンは Unicode 絵文字ではなく同梱 Weather Icons フォント（`resources/fonts/WeatherIcons.ttf`、SIL Open Font License 1.1）で描画され、外部システムフォント非依存でどの環境でも一貫した glyph を表示。
 

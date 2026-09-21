@@ -5,7 +5,7 @@ use crate::weather::WeatherData;
 use chrono::Local;
 use cosmic::Element;
 use cosmic::iced::widget::{column, container, row, text};
-use cosmic::iced::{Alignment, Border, Color, Length, Rectangle, Shadow};
+use cosmic::iced::{Alignment, Border, Color, Length, Rectangle};
 use cosmic::widget::mouse_area;
 use edit_mode::EditState;
 
@@ -40,14 +40,37 @@ pub fn view_widget<'a, Message: From<WidgetMessage> + Clone + 'static>(
     let time_str = now.format("%H:%M:%S").to_string();
     let date_str = now.format("%A, %B %d, %Y").to_string();
 
-    let (font_scale, is_editing) = match state {
-        WidgetState::Normal => (config.appearance.font_scale, false),
-        WidgetState::Edit(edit_state) => (edit_state.font_scale, true),
+    let (stage_info, is_editing, grid_pos) = match state {
+        WidgetState::Normal => (
+            crate::config::get_size_stage(config.layout.size_stage),
+            false,
+            config.layout.grid_position,
+        ),
+        WidgetState::Edit(edit_state) => (
+            crate::config::get_size_stage(edit_state.layout.size_stage),
+            true,
+            edit_state.layout.grid_position,
+        ),
     };
 
-    let font_scale = font_scale.clamp(0.3, 10.0);
-    let time_size = (36.0 * font_scale).round() as u16;
-    let date_size = (14.0 * font_scale).round() as u16;
+    use crate::config::GridPosition;
+    let align_x = match grid_pos {
+        GridPosition::TopLeft | GridPosition::MiddleLeft | GridPosition::BottomLeft => {
+            Alignment::Start
+        }
+        GridPosition::TopCenter | GridPosition::Center | GridPosition::BottomCenter => {
+            Alignment::Center
+        }
+        GridPosition::TopRight | GridPosition::MiddleRight | GridPosition::BottomRight => {
+            Alignment::End
+        }
+    };
+    let align_y = Alignment::Start;
+
+    let time_size = stage_info.time_size;
+    let date_size = stage_info.date_size;
+    let spacing = stage_info.spacing;
+    let padding = stage_info.padding;
 
     let (time_font, date_font) =
         crate::config::theme::get_font_pair_for_theme(&config.appearance.theme);
@@ -79,8 +102,8 @@ pub fn view_widget<'a, Message: From<WidgetMessage> + Clone + 'static>(
 
         let temp_text = text(temp_str).font(date_font).size(date_size);
 
-        let icon_spacing = (6.0 * font_scale).round().max(4.0) as u16;
-        let item_spacing = (16.0 * font_scale).round().max(12.0) as u16;
+        let icon_spacing = (spacing / 2).max(4);
+        let item_spacing = (spacing * 2).max(12);
 
         let icons_row = row![icon_text, moon_text]
             .spacing(icon_spacing)
@@ -102,48 +125,40 @@ pub fn view_widget<'a, Message: From<WidgetMessage> + Clone + 'static>(
     let widget_text_color =
         crate::config::parse_hex_color(&config.appearance.color).unwrap_or(Color::WHITE);
 
-    let text_shadow = if config.appearance.text_shadow {
-        Shadow {
-            color: Color::from_rgba(0.0, 0.0, 0.0, 0.65),
-            offset: cosmic::iced::Vector::new(1.0, 2.0),
-            blur_radius: 6.0,
-        }
-    } else {
-        Shadow::default()
-    };
-
     let content = column![time_text, date_text, weather_element]
-        .spacing(6)
-        .align_x(Alignment::Start);
+        .spacing(spacing)
+        .align_x(align_x);
 
     if is_editing {
-        // In Edit Mode, show a highlighted dashed/solid boundary around the widget on desktop
+        // In Edit Mode, show a highlighted boundary around the widget on desktop without background fill/blur
         container(content)
-            .padding(12)
+            .padding(padding)
             .width(Length::Fill)
             .height(Length::Fill)
+            .align_x(align_x)
+            .align_y(align_y)
             .style(move |_theme| container::Style {
-                background: Some(Color::from_rgba(0.2, 0.4, 0.8, 0.15).into()),
+                background: None,
                 border: Border {
                     color: Color::from_rgb(0.35, 0.65, 1.0),
                     width: 2.0,
                     radius: 8.0.into(),
                 },
-                shadow: text_shadow,
                 text_color: Some(widget_text_color),
                 ..Default::default()
             })
             .into()
     } else {
-        // In Normal Mode, completely transparent background
+        // In Normal Mode, completely transparent background with no shadow
         let boxed = container(content)
-            .padding(12)
+            .padding(padding)
             .width(Length::Fill)
             .height(Length::Fill)
+            .align_x(align_x)
+            .align_y(align_y)
             .style(move |_theme| container::Style {
                 background: None,
                 text_color: Some(widget_text_color),
-                shadow: text_shadow,
                 ..Default::default()
             });
 
@@ -156,11 +171,12 @@ pub fn view_widget<'a, Message: From<WidgetMessage> + Clone + 'static>(
 
 /// Returns the content bounds rectangle for Normal Mode input region
 pub fn content_bounds(config: &Config) -> Vec<Rectangle> {
+    let info = crate::config::get_size_stage(config.layout.size_stage);
     vec![Rectangle {
         x: 0.0,
         y: 0.0,
-        width: config.layout.width as f32,
-        height: config.layout.height as f32,
+        width: info.width as f32,
+        height: info.height as f32,
     }]
 }
 

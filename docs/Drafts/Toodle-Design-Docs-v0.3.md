@@ -23,7 +23,7 @@ Toodle の現在の設計上の基本ルールを以下に固定する。
 5. Edit Mode は Widget 本体の Surface を直接編集するのではなく、`Layer::Top` の独立 Edit Layout Panel と組み合わせて実現する。
 6. Normal Mode では Widget 本体の通常 Surface を操作対象とする。
 7. Edit Mode では Widget 本体の Input Region を一時的に全体へ拡張し、同時に Edit Layout Panel を表示する。
-8. レイアウト変更は Anchor / Margin / Width / Height を基本とし、Font Scale も Edit Layout から変更できる。
+8. レイアウト変更はディスプレイ 9分割グリッド配置（3×3: Top/Mid/Bot × Left/Center/Right）および WQHD 対応 10段階固定サイズ（ウィンドウ寸法とフォントサイズが完全連動）を基本とする。
 9. レイアウト変更中は既存の Widget Surface を破棄・再生成せず、Layer Surface Command によるインプレース更新を優先する。
 10. Context Menu、Calendar、Forecast、Edit Layout Panel は `xdg_popup` ではなく独立 Layer Surface とする。
 11. 設定は `~/.config/toodle/config.toml` に保存する。
@@ -302,12 +302,8 @@ Edit Layout Panel は独立した Layer::Top Surface とする。
 
 役割：
 
-- Anchor の変更
-- Margin X の変更
-- Margin Y の変更
-- Width の変更
-- Height の変更
-- Font Scale の変更
+- Grid Position の変更（3×3: TopLeft, TopCenter, TopRight, MiddleLeft, Center, MiddleRight, BottomLeft, BottomCenter, BottomRight）
+- Size Stage の変更（1..=10: Compact 280px 〜 Max WQHD 2060px、フォントサイズ連動）
 - Save
 - Cancel
 
@@ -399,58 +395,53 @@ Input Region の制御自体は引き続き重要な設計要素とする。
 
 # 9. Layout
 
-Widget の配置は Anchor + Margin 方式で管理する。
+Widget の配置は **「ディスプレイ 9分割グリッド配置（3×3）」** および **「10段階固定サイズ（WQHD対応・タイポグラフィ完全連動）」** 方式で管理する。
+スライダー操作による画面のチラつき（フリッカー）やゴースト（ブラー）描画を根本排除するため、連続値スライダーおよび自由ピクセルマージンは廃止された。
 
-## 9.1 Anchor
+## 9.1 Grid Position (3×3 画面分割)
 
-現在使用する Anchor：
-
-```text
-TopLeft
-TopRight
-BottomLeft
-BottomRight
-```
-
-## 9.2 Position
-
-配置：
+ディスプレイ領域を縦横 3 分割した 9 つのポジションをサポート：
 
 ```text
-Anchor
-Margin X
-Margin Y
+Row 0 (Top):    TopLeft    | TopCenter    | TopRight
+Row 1 (Middle): MiddleLeft | Center       | MiddleRight
+Row 2 (Bottom): BottomLeft | BottomCenter | BottomRight
 ```
 
-## 9.3 Size
+- **ガター (Gutter)**: 画面外周からの基本余白は `32px` 固定。
+- **中央計算**:
+  - 水平中央（TopCenter, Center, BottomCenter）: `mid_left = ((screen_w - w) / 2).max(gutter)`
+  - 垂直中央（MiddleLeft, Center, MiddleRight）: `mid_top = ((screen_h - h) / 2).max(gutter)`
+- **タイポグラフィ水平揃え (`align_x`)**:
+  - Left系（TopLeft, MiddleLeft, BottomLeft）: `Alignment::Start` (左揃え)
+  - Center系（TopCenter, Center, BottomCenter）: `Alignment::Center` (完全中央揃え)
+  - Right系（TopRight, MiddleRight, BottomRight）: `Alignment::End` (右揃え)
+- **コンテナ垂直揃え (`align_y`)**:
+  - 全ポジションで `Alignment::Start`（上詰め＋padding）を適用し、下部配置時でも下端への沈み込みを防止。
 
-サイズ：
+## 9.2 Coordinated Size Stages (10段階固定サイズ & フォント連動)
 
-```text
-Width
-Height
-```
+WQHD (2560×1440) を最大解像度として最適化した 10 段階のサイズプリセット（`SIZE_STAGES`）：
 
-## 9.4 Font Scale
+| Stage | Label | Width | Height | Time Size | Date Size | Spacing | Padding | Font Scale |
+|---|---|---|---|---|---|---|---|---|
+| 1 | Compact | 280 | 130 | 38 | 14 | 4 | 8 | 0.70 |
+| 2 | Default | 380 | 175 | 52 | 19 | 6 | 10 | 1.00 |
+| 3 | Medium | 490 | 225 | 68 | 25 | 7 | 13 | 1.35 |
+| 4 | Standard | 620 | 285 | 88 | 32 | 9 | 16 | 1.70 |
+| 5 | Large | 780 | 355 | 112 | 40 | 11 | 19 | 2.20 |
+| 6 | X-Large | 960 | 440 | 140 | 50 | 13 | 23 | 2.75 |
+| 7 | 2X-Large | 1180 | 540 | 174 | 62 | 16 | 27 | 3.35 |
+| 8 | Huge | 1440 | 650 | 215 | 76 | 19 | 32 | 4.15 |
+| 9 | Giant | 1740 | 780 | 260 | 92 | 22 | 38 | 4.90 |
+| 10 | Max WQHD | 2060 | 920 | 310 | 110 | 25 | 44 | 5.60 |
 
-Appearance の `font_scale` を Widget 表示へ反映する。
+- ウィンドウ縦幅（`height`）は、特大フォント時の行高および天候アイコン（`FONT_WEATHER_ICONS`）のグリフ境界ボックスを余裕をもって包含する十分なヘッドルームを確保し、下部クリップ（見切れ）を物理防止。
+- ウィンドウサイズとフォントサイズが 1:1 で自動同期するため、設定 UI の `font_scale` スライダーは廃止され、ステージ選択ボタンに一元化。
 
-Edit Layout Panel からも Font Scale を変更できる。
+## 9.3 Legacy Compatibility (後方互換性)
 
-## 9.5 Safety Limits
-
-現在の設定 UI では、設定値が画面外へ大きく飛び出すことを防ぐため、Layout 値にクランプを設ける。
-
-現在の実装上の範囲：
-
-```text
-margin_x : 0 ..= 2560
-margin_y : 0 ..= 1440
-width    : 150 ..= 1200
-height   : 60 ..= 800
-```
-
-この範囲は固定仕様というより、現在の安全域として扱う。
+既存の `config.toml` に `anchor`, `margin_x`, `margin_y`, `width`, `height` が存在する場合でも、デシリアライズ時のデフォルト値補完および `to_legacy_anchor()` によりシームレスに後方互換性を維持する。
 
 ---
 
@@ -828,11 +819,12 @@ Edit Layout
 output = ""
 
 [layout]
-anchor = "TopRight"
-margin_x = 40
-margin_y = 60
-width = 280
-height = 140
+grid_position = "TopRight"
+size_stage = 2
+# レガシー互換フィールド（自動補完・読み込み対応）
+# anchor = "TopRight"
+# margin_x = 40
+# margin_y = 60
 
 [appearance]
 theme = "Modern"
@@ -1293,13 +1285,16 @@ Phase 0 の実機検証および Phase 1〜4 の実装結果を反映。
 | Popup | Layer::Top Popup | 独立 Layer::Top Surface |
 | `xdg_popup` | Non-Goal | 引き続き不採用 |
 | Edit Mode | Widget Surface 内の編集状態を想定 | Top Edit Layout Panel + Bottom Widget |
-| Resize | Resize Handle を想定 | Edit Panel の Size 操作 |
+| Resize | Resize Handle を想定 | 10段階固定サイズ（WQHD対応）ボタン |
+| Layout 配置 | Anchor + 自由 Margin スライダー | 画面 9分割グリッド（3×3: Top/Mid/Bot × L/C/R） |
 | Layout 更新 | Edit Mode の操作 | 既存 Surface への in-place update |
 | Input Region Normal | content bounds | 現行 `content_bounds()` の矩形 |
 | Input Region Edit | Widget 全体 | Widget 全体 |
+| Typography 連動 | font_scale スライダー | ウィンドウ寸法と 1:1 完全同期 |
 | Popup 背景 | 透明を想定可能 | Solid Dark |
 | Settings | XDG Toplevel | XDG Toplevel |
 | Config reload | File watcher | File watcher |
+| Local Install | `cargo build --release` (rustc-wrapper) | `./tools/install-local.sh` に責務分離 |
 | Display Output | 設計上サポート | 設定項目は存在、実装接続は Gap |
 | Weather TTL | Current 30m / Forecast 3h | 設計値として維持、実装分離は Gap |
 | Backoff | 必須設計 | Known Gap |

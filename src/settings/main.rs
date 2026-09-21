@@ -1,16 +1,16 @@
 use cosmic::app::{Core, Settings, Task};
 use cosmic::iced::widget::{column, container, row, scrollable, text};
 use cosmic::iced::{Alignment, Border, Color, Length, Shadow, Size};
-use cosmic::widget::{button, mouse_area, slider, text_input, toggler};
+use cosmic::widget::{button, mouse_area, text_input, toggler};
 use cosmic::{Application, Element};
 
 use toodle::config::theme::{COLOR_PALETTE_16, THEME_PRESETS};
-use toodle::config::{Anchor, Config, TemperatureUnit};
+use toodle::config::{Config, TemperatureUnit};
+use toodle::display::{clean_display_name, detect_displays, DetectedDisplay};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum SettingsTab {
     Appearance,
-    Layout,
     Weather,
     Display,
 }
@@ -23,6 +23,7 @@ struct SettingsApp {
     lat_input: String,
     lon_input: String,
     output_input: String,
+    detected_displays: Vec<DetectedDisplay>,
     status_message: Option<String>,
 }
 
@@ -31,18 +32,13 @@ enum Message {
     SelectTab(SettingsTab),
     SetTheme(String),
     SetColor(String),
-    SetFontScale(f32),
     SetTextShadow(bool),
-    SetAnchor(Anchor),
-    SetMarginX(i32),
-    SetMarginY(i32),
-    SetWidth(u32),
-    SetHeight(u32),
     SetLocationName(String),
     SetLatitude(String),
     SetLongitude(String),
     SetTemperatureUnit(TemperatureUnit),
     SetOutput(String),
+    RefreshDisplays,
     QuickCity(&'static str, f64, f64),
     ApplyLocation,
     Save,
@@ -64,12 +60,23 @@ impl Application for SettingsApp {
         &mut self.core
     }
 
-    fn init(core: Core, _flags: Self::Flags) -> (Self, Task<Self::Message>) {
-        let config = Config::load();
+    fn init(mut core: Core, _flags: Self::Flags) -> (Self, Task<Self::Message>) {
+        core.set_auto_blur(Default::default());
+        let mut config = Config::load();
+        // Sanitize any existing ANSI escapes from config.display.output
+        if let Some(ref out) = config.display.output {
+            let cleaned = clean_display_name(out);
+            if cleaned.is_empty() {
+                config.display.output = None;
+            } else {
+                config.display.output = Some(cleaned);
+            }
+        }
         let location_input = config.weather.location_name.clone();
         let lat_input = config.weather.latitude.to_string();
         let lon_input = config.weather.longitude.to_string();
         let output_input = config.display.output.clone().unwrap_or_default();
+        let detected_displays = detect_displays();
 
         let app = Self {
             core,
@@ -79,6 +86,7 @@ impl Application for SettingsApp {
             lat_input,
             lon_input,
             output_input,
+            detected_displays,
             status_message: None,
         };
 
@@ -90,6 +98,9 @@ impl Application for SettingsApp {
             Message::SelectTab(tab) => {
                 self.active_tab = tab;
                 self.status_message = None;
+                if tab == SettingsTab::Display {
+                    self.detected_displays = detect_displays();
+                }
                 Task::none()
             }
 
@@ -110,44 +121,8 @@ impl Application for SettingsApp {
                 Task::none()
             }
 
-            Message::SetFontScale(scale) => {
-                self.config.appearance.font_scale = scale;
-                let _ = self.config.save();
-                Task::none()
-            }
-
             Message::SetTextShadow(enabled) => {
                 self.config.appearance.text_shadow = enabled;
-                let _ = self.config.save();
-                Task::none()
-            }
-
-            Message::SetAnchor(anchor) => {
-                self.config.layout.anchor = anchor;
-                let _ = self.config.save();
-                Task::none()
-            }
-
-            Message::SetMarginX(x) => {
-                self.config.layout.margin_x = x.max(0);
-                let _ = self.config.save();
-                Task::none()
-            }
-
-            Message::SetMarginY(y) => {
-                self.config.layout.margin_y = y.max(0);
-                let _ = self.config.save();
-                Task::none()
-            }
-
-            Message::SetWidth(w) => {
-                self.config.layout.width = w.clamp(150, 2000);
-                let _ = self.config.save();
-                Task::none()
-            }
-
-            Message::SetHeight(h) => {
-                self.config.layout.height = h.clamp(60, 1200);
                 let _ = self.config.save();
                 Task::none()
             }
@@ -181,13 +156,26 @@ impl Application for SettingsApp {
             }
 
             Message::SetOutput(out) => {
-                self.output_input = out.clone();
-                if out.trim().is_empty() {
+                let cleaned = clean_display_name(&out);
+                self.output_input = cleaned.clone();
+                let display_desc = if cleaned.is_empty() {
                     self.config.display.output = None;
+                    "Default (Active Display)".to_string()
                 } else {
-                    self.config.display.output = Some(out.trim().to_string());
-                }
+                    self.config.display.output = Some(cleaned.clone());
+                    cleaned
+                };
                 let _ = self.config.save();
+                self.status_message = Some(format!(
+                    "Target display set to '{}'. Widget relocated live!",
+                    display_desc
+                ));
+                Task::none()
+            }
+
+            Message::RefreshDisplays => {
+                self.detected_displays = detect_displays();
+                self.status_message = Some("Refreshed connected displays list.".to_string());
                 Task::none()
             }
 
@@ -279,7 +267,6 @@ impl Application for SettingsApp {
 
         let tab_bar = row![
             tab_btn(SettingsTab::Appearance, "Appearance"),
-            tab_btn(SettingsTab::Layout, "Layout"),
             tab_btn(SettingsTab::Weather, "Weather"),
             tab_btn(SettingsTab::Display, "Display"),
         ]
@@ -288,7 +275,6 @@ impl Application for SettingsApp {
         // Tab Content
         let tab_content: Element<Self::Message> = match self.active_tab {
             SettingsTab::Appearance => self.view_appearance_tab(),
-            SettingsTab::Layout => self.view_layout_tab(),
             SettingsTab::Weather => self.view_weather_tab(),
             SettingsTab::Display => self.view_display_tab(),
         };
@@ -430,124 +416,39 @@ impl SettingsApp {
         }
         color_rows = color_rows.push(row_1).push(row_2);
 
-        // Font scale slider
-        let scale_percent = (self.config.appearance.font_scale * 100.0).round() as i32;
-        let scale_slider = slider(
-            0.3..=10.0,
-            self.config.appearance.font_scale,
-            Message::SetFontScale,
-        )
-        .step(0.05_f32)
-        .width(Length::Fixed(340.0));
-
         // Text shadow toggler
         let shadow_toggle = toggler(self.config.appearance.text_shadow)
             .label("Enable Text Shadow".to_string())
             .on_toggle(Message::SetTextShadow);
+
+        let layout_tip = container(
+            column![
+                text("Window Size & Font Scaling (Coupled)").size(15),
+                text("Widget size (10 discrete stages from Compact up to 2560x1440 Max WQHD) and font scaling are coupled together without blur or distortion. Right-click the clock widget and select \"Edit Layout\" to change size and grid position.")
+                    .size(13),
+            ]
+            .spacing(4),
+        )
+        .padding([12, 16])
+        .width(Length::Fill)
+        .style(|_| container::Style {
+            background: Some(Color::from_rgba(0.2, 0.25, 0.35, 0.35).into()),
+            border: Border {
+                color: Color::from_rgba(0.4, 0.5, 0.7, 0.3),
+                width: 1.0,
+                radius: 8.0.into(),
+            },
+            text_color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.75)),
+            ..Default::default()
+        });
 
         column![
             text("Theme Presets").size(17),
             theme_buttons,
             text("Color Palette (16 Curated Colors)").size(17),
             color_rows,
-            row![
-                text(format!("Font Scale: {}%", scale_percent)).size(15),
-                scale_slider
-            ]
-            .spacing(16)
-            .align_y(Alignment::Center),
             shadow_toggle,
-        ]
-        .spacing(18)
-        .into()
-    }
-
-    fn view_layout_tab(&self) -> Element<'_, Message> {
-        let cur_anchor = self.config.layout.anchor;
-
-        let anchor_btn = |a: Anchor, label: &'static str| {
-            if cur_anchor == a {
-                button::suggested(label)
-                    .width(Length::Fixed(120.0))
-                    .padding([8, 12])
-                    .on_press(Message::SetAnchor(a))
-            } else {
-                button::standard(label)
-                    .width(Length::Fixed(120.0))
-                    .padding([8, 12])
-                    .on_press(Message::SetAnchor(a))
-            }
-        };
-
-        let anchor_row = row![
-            anchor_btn(Anchor::TopLeft, "TopLeft"),
-            anchor_btn(Anchor::TopRight, "TopRight"),
-            anchor_btn(Anchor::BottomLeft, "BottomLeft"),
-            anchor_btn(Anchor::BottomRight, "BottomRight"),
-        ]
-        .spacing(10);
-
-        let margin_x_slider = slider(
-            0..=2560,
-            self.config.layout.margin_x.clamp(0, 2560),
-            Message::SetMarginX,
-        )
-        .step(2)
-        .width(Length::Fixed(340.0));
-
-        let margin_y_slider = slider(
-            0..=1440,
-            self.config.layout.margin_y.clamp(0, 1440),
-            Message::SetMarginY,
-        )
-        .step(2)
-        .width(Length::Fixed(340.0));
-
-        let width_slider = slider(
-            150..=1200,
-            self.config.layout.width.clamp(150, 1200),
-            Message::SetWidth,
-        )
-        .step(5u32)
-        .width(Length::Fixed(340.0));
-
-        let height_slider = slider(
-            60..=800,
-            self.config.layout.height.clamp(60, 800),
-            Message::SetHeight,
-        )
-        .step(5u32)
-        .width(Length::Fixed(340.0));
-
-        column![
-            text("Desktop Anchor").size(17),
-            anchor_row,
-            text("Margins").size(17),
-            row![
-                text(format!("Margin X: {} px", self.config.layout.margin_x)).size(15),
-                margin_x_slider
-            ]
-            .spacing(16)
-            .align_y(Alignment::Center),
-            row![
-                text(format!("Margin Y: {} px", self.config.layout.margin_y)).size(15),
-                margin_y_slider
-            ]
-            .spacing(16)
-            .align_y(Alignment::Center),
-            text("Widget Size").size(17),
-            row![
-                text(format!("Width: {} px", self.config.layout.width)).size(15),
-                width_slider
-            ]
-            .spacing(16)
-            .align_y(Alignment::Center),
-            row![
-                text(format!("Height: {} px", self.config.layout.height)).size(15),
-                height_slider
-            ]
-            .spacing(16)
-            .align_y(Alignment::Center),
+            layout_tip,
         ]
         .spacing(18)
         .into()
@@ -636,26 +537,104 @@ impl SettingsApp {
 
     fn view_display_tab(&self) -> Element<'_, Message> {
         let note = container(text(
-            "Specify the Wayland output name (e.g., 'DP-1', 'HDMI-A-1') where the clock widget should appear.\nLeave empty to automatically attach to the primary or active output."
+            "Select the display where the clock widget should appear, or choose Default to automatically attach to the primary/active screen."
         ).size(13))
         .style(|_| container::Style {
             text_color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.65)),
             ..Default::default()
         });
 
-        column![
-            text("Target Display Output").size(17),
-            note,
+        // Header for detected displays with refresh button
+        let detected_header = row![
+            text("Connected Displays (Click to select)").size(17),
+            button::standard("⟳ Refresh")
+                .padding([4, 10])
+                .on_press(Message::RefreshDisplays),
+        ]
+        .spacing(12)
+        .align_y(Alignment::Center);
+
+        let cur_target = self
+            .config
+            .display
+            .output
+            .as_deref()
+            .map(clean_display_name)
+            .unwrap_or_default();
+        let is_default_selected = cur_target.is_empty();
+
+        let mut display_list = column![].spacing(8);
+
+        // Option 1: Default / Active
+        let default_btn = if is_default_selected {
+            button::suggested("✓ Default (Active / Primary Screen)")
+                .width(Length::Fill)
+                .padding([10, 16])
+                .on_press(Message::SetOutput(String::new()))
+        } else {
+            button::standard("Default (Active / Primary Screen)")
+                .width(Length::Fill)
+                .padding([10, 16])
+                .on_press(Message::SetOutput(String::new()))
+        };
+        display_list = display_list.push(default_btn);
+
+        // Detected displays from cosmic-randr
+        for disp in &self.detected_displays {
+            let is_selected = !cur_target.is_empty() && cur_target.eq_ignore_ascii_case(&disp.name);
+            let label = disp.label();
+            let primary_tag = if disp.is_primary { " [Primary]" } else { "" };
+            let full_label = format!("{}{}", label, primary_tag);
+
+            let btn = if is_selected {
+                button::suggested(format!("✓ {}", full_label))
+                    .width(Length::Fill)
+                    .padding([10, 16])
+                    .on_press(Message::SetOutput(disp.name.clone()))
+            } else {
+                button::standard(full_label)
+                    .width(Length::Fill)
+                    .padding([10, 16])
+                    .on_press(Message::SetOutput(disp.name.clone()))
+            };
+            display_list = display_list.push(btn);
+        }
+
+        if self.detected_displays.is_empty() {
+            let empty_hint = container(text(
+                "No displays automatically detected. You can manually enter the output name below."
+            ).size(13))
+            .style(|_| container::Style {
+                text_color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.5)),
+                ..Default::default()
+            });
+            display_list = display_list.push(empty_hint);
+        }
+
+        // Manual Override section
+        let manual_section = column![
+            text("Manual Output Name (Optional Override)").size(15),
             row![
-                text("Output Name:").size(14).width(Length::Fixed(120.0)),
-                text_input("e.g. DP-1 (or empty)", &self.output_input)
+                text("Output:").size(14).width(Length::Fixed(80.0)),
+                text_input("e.g. DP-1, DP-2, HDMI-A-1", &self.output_input)
                     .on_input(Message::SetOutput)
-                    .width(Length::Fixed(280.0))
+                    .width(Length::Fixed(260.0)),
+                button::standard("Clear (Default)")
+                    .padding([8, 12])
+                    .on_press(Message::SetOutput(String::new())),
             ]
-            .spacing(12)
+            .spacing(10)
             .align_y(Alignment::Center),
         ]
-        .spacing(16)
+        .spacing(10);
+
+        column![
+            detected_header,
+            note,
+            display_list,
+            manual_section,
+        ]
+        .spacing(18)
         .into()
     }
 }

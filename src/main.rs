@@ -8,12 +8,16 @@ use cosmic::iced::platform_specific::shell::commands::layer_surface::{
 };
 use cosmic::iced::runtime::core::layout::Limits;
 use cosmic::iced::window::Id as SurfaceId;
+use cosmic::cctk::sctk::reexports::client::protocol::wl_output::WlOutput;
+use cosmic::iced::core::event::wayland::{Event as WaylandEvent, OutputEvent};
+use cosmic::iced::core::event::PlatformSpecific;
 use cosmic::iced::{Event, Subscription};
 use cosmic::{Application, Element};
 use tracing::info;
 
 use std::sync::Arc;
 use toodle::config::Config;
+use toodle::display::clean_display_name;
 use toodle::popup::{self, PopupMessage};
 use toodle::weather::{
     WeatherCache, WeatherData, WeatherError, WeatherService, weather_update_stream,
@@ -28,6 +32,12 @@ enum ActivePopup {
     Forecast,
 }
 
+#[derive(Debug, Clone)]
+struct OutputEntry {
+    name: Option<String>,
+    output: WlOutput,
+}
+
 struct ToodleApp {
     core: Core,
     config: Config,
@@ -39,6 +49,10 @@ struct ToodleApp {
     popup_surface_id: Option<SurfaceId>,
     active_popup: Option<ActivePopup>,
     edit_panel_surface_id: Option<SurfaceId>,
+    outputs: Vec<OutputEntry>,
+    current_assigned_output: Option<String>,
+    screen_w: u32,
+    screen_h: u32,
 }
 
 #[derive(Debug, Clone)]
@@ -51,6 +65,7 @@ enum Message {
     ConfigReloaded(Config),
     FetchWeather,
     WeatherUpdated(Result<WeatherData, WeatherError>),
+    WaylandOutput(OutputEvent, WlOutput),
 }
 
 impl From<WidgetMessage> for Message {
@@ -71,6 +86,76 @@ impl From<EditMessage> for Message {
     }
 }
 
+impl ToodleApp {
+    fn get_target_iced_output(&self) -> IcedOutput {
+        if let Some(target) = &self.config.display.output {
+            let clean_target = clean_display_name(target);
+            if !clean_target.is_empty() {
+                for entry in &self.outputs {
+                    if let Some(name) = &entry.name {
+                        let clean_entry_name = clean_display_name(name);
+                        if clean_entry_name.eq_ignore_ascii_case(&clean_target) {
+                            return IcedOutput::Output(entry.output.clone());
+                        }
+                    }
+                }
+            }
+        }
+        IcedOutput::Active
+    }
+
+    fn recreate_widget(&mut self) -> Task<Message> {
+        let old_id = self.widget_surface_id;
+        let new_id = SurfaceId::unique();
+        self.widget_surface_id = new_id;
+        self.current_assigned_output = self.config.display.output.clone();
+
+        let (anchor, (top, right, bottom, left), (w, h), _scale) =
+            self.config.layout.calculate_geometry(self.screen_w, self.screen_h);
+        let target_output = self.get_target_iced_output();
+
+        let widget_settings = SctkLayerSurfaceSettings {
+            id: new_id,
+            layer: Layer::Bottom,
+            keyboard_interactivity: KeyboardInteractivity::None,
+            input_zone: Some(widget::content_bounds(&self.config)),
+            anchor,
+            output: target_output,
+            namespace: "toodle-widget".to_string(),
+            margin: IcedMargin {
+                top,
+                right,
+                bottom,
+                left,
+            },
+            size: Some((Some(w), Some(h))),
+            exclusive_zone: 0,
+            size_limits: Limits::NONE,
+        };
+
+        info!(
+            "Recreating widget layer surface on target output {:?}",
+            self.config.display.output
+        );
+
+        let mut tasks = vec![
+            layer_cmd::destroy_layer_surface(old_id),
+            layer_cmd::get_layer_surface(widget_settings),
+        ];
+
+        if let Some(popup_id) = self.popup_surface_id.take() {
+            tasks.push(layer_cmd::destroy_layer_surface(popup_id));
+            self.active_popup = None;
+        }
+        if let Some(panel_id) = self.edit_panel_surface_id.take() {
+            tasks.push(layer_cmd::destroy_layer_surface(panel_id));
+            self.state = WidgetState::Normal;
+        }
+
+        Task::batch(tasks)
+    }
+}
+
 impl Application for ToodleApp {
     type Executor = cosmic::executor::Default;
     type Flags = ();
@@ -85,17 +170,21 @@ impl Application for ToodleApp {
         &mut self.core
     }
 
-    fn init(core: Core, _flags: Self::Flags) -> (Self, Task<Self::Message>) {
+    fn init(mut core: Core, _flags: Self::Flags) -> (Self, Task<Self::Message>) {
+        core.set_auto_blur(Default::default());
+        core.set_auto_corner_radius(Default::default());
         let config = Config::load();
         let widget_surface_id = SurfaceId::unique();
 
-        let (top, right, bottom, left) = config.layout.margins();
+        let (screen_w, screen_h) = toodle::display::detect_primary_resolution();
+        let (anchor, (top, right, bottom, left), (w, h), _scale) =
+            config.layout.calculate_geometry(screen_w, screen_h);
         let widget_settings = SctkLayerSurfaceSettings {
             id: widget_surface_id,
             layer: Layer::Bottom,
             keyboard_interactivity: KeyboardInteractivity::None,
             input_zone: Some(widget::content_bounds(&config)),
-            anchor: config.layout.anchor.to_layer_anchor(),
+            anchor,
             output: IcedOutput::Active,
             namespace: "toodle-widget".to_string(),
             margin: IcedMargin {
@@ -104,7 +193,7 @@ impl Application for ToodleApp {
                 bottom,
                 left,
             },
-            size: Some((Some(config.layout.width), Some(config.layout.height))),
+            size: Some((Some(w), Some(h))),
             exclusive_zone: 0,
             size_limits: Limits::NONE,
         };
@@ -147,6 +236,10 @@ impl Application for ToodleApp {
             popup_surface_id: None,
             active_popup: None,
             edit_panel_surface_id: None,
+            outputs: Vec::new(),
+            current_assigned_output: None,
+            screen_w,
+            screen_h,
         };
 
         (app, initial_tasks)
@@ -212,7 +305,7 @@ impl Application for ToodleApp {
                     keyboard_interactivity: KeyboardInteractivity::OnDemand,
                     input_zone: None,
                     anchor: self.config.layout.anchor.to_layer_anchor(),
-                    output: IcedOutput::Active,
+                    output: self.get_target_iced_output(),
                     namespace: "toodle-popup".to_string(),
                     margin: popup_margin,
                     size: Some((Some(340), Some(380))),
@@ -231,10 +324,12 @@ impl Application for ToodleApp {
                 }
                 self.active_popup = None;
 
-                // Initialize Edit State with current layout and font_scale
+                // Initialize Edit State with current layout, font_scale, and screen size
                 self.state = WidgetState::Edit(EditState::new(
                     self.config.layout.clone(),
                     self.config.appearance.font_scale,
+                    self.screen_w,
+                    self.screen_h,
                 ));
 
                 // Open independent Edit Panel on Layer::Top
@@ -256,10 +351,10 @@ impl Application for ToodleApp {
                     keyboard_interactivity: KeyboardInteractivity::OnDemand,
                     input_zone: None,
                     anchor: LayerAnchor::TOP | LayerAnchor::RIGHT,
-                    output: IcedOutput::Active,
+                    output: self.get_target_iced_output(),
                     namespace: "toodle-edit-panel".to_string(),
                     margin: panel_margin,
-                    size: Some((Some(420), Some(480))),
+                    size: Some((Some(460), Some(490))),
                     exclusive_zone: 0,
                     size_limits: Limits::NONE,
                 };
@@ -314,7 +409,7 @@ impl Application for ToodleApp {
                     keyboard_interactivity: KeyboardInteractivity::OnDemand,
                     input_zone: None,
                     anchor: self.config.layout.anchor.to_layer_anchor(),
-                    output: IcedOutput::Active,
+                    output: self.get_target_iced_output(),
                     namespace: "toodle-calendar".to_string(),
                     margin: popup_margin,
                     size: Some((Some(680), Some(720))),
@@ -350,7 +445,7 @@ impl Application for ToodleApp {
                     keyboard_interactivity: KeyboardInteractivity::OnDemand,
                     input_zone: None,
                     anchor: self.config.layout.anchor.to_layer_anchor(),
-                    output: IcedOutput::Active,
+                    output: self.get_target_iced_output(),
                     namespace: "toodle-forecast".to_string(),
                     margin: popup_margin,
                     size: Some((Some(680), Some(720))),
@@ -401,6 +496,11 @@ impl Application for ToodleApp {
                 if let WidgetState::Edit(edit_state) = &self.state {
                     self.config.layout = edit_state.layout.clone();
                     self.config.appearance.font_scale = edit_state.font_scale;
+                    let (_anchor, _margins, (w, h), _) =
+                        self.config.layout.calculate_geometry(self.screen_w, self.screen_h);
+                    self.config.layout.width = w;
+                    self.config.layout.height = h;
+                    self.config.layout.anchor = edit_state.layout.grid_position.to_legacy_anchor();
                     let _ = self.config.save();
                 }
 
@@ -410,10 +510,6 @@ impl Application for ToodleApp {
 
                 self.state = WidgetState::Normal;
 
-                // The widget surface is ALREADY at the exact desired anchor, size, and margin!
-                // We do NOT need to call set_anchor / set_margin / set_size again.
-                // Doing so forces Wayland buffer reallocations which caused the flickering!
-                // We only need to restore the input zone to content bounds.
                 tasks.push(layer_cmd::set_input_zone(
                     self.widget_surface_id,
                     Some(widget::content_bounds(&self.config)),
@@ -433,11 +529,12 @@ impl Application for ToodleApp {
                 self.active_popup = None;
 
                 self.state = WidgetState::Normal;
-                let (top, right, bottom, left) = self.config.layout.margins();
+                let (anchor, (top, right, bottom, left), (w, h), _) =
+                    self.config.layout.calculate_geometry(self.screen_w, self.screen_h);
 
                 tasks.push(layer_cmd::set_anchor(
                     self.widget_surface_id,
-                    self.config.layout.anchor.to_layer_anchor(),
+                    anchor,
                 ));
                 tasks.push(layer_cmd::set_margin(
                     self.widget_surface_id,
@@ -448,8 +545,8 @@ impl Application for ToodleApp {
                 ));
                 tasks.push(layer_cmd::set_size(
                     self.widget_surface_id,
-                    Some(self.config.layout.width),
-                    Some(self.config.layout.height),
+                    Some(w),
+                    Some(h),
                 ));
                 tasks.push(layer_cmd::set_input_zone(
                     self.widget_surface_id,
@@ -462,15 +559,10 @@ impl Application for ToodleApp {
             Message::Edit(msg) => {
                 if let WidgetState::Edit(edit_state) = &mut self.state {
                     match msg {
-                        EditMessage::SetMarginX(_) | EditMessage::SetMarginY(_) => {
-                            edit_state.update(msg);
-                            let (top, right, bottom, left) = edit_state.layout.margins();
-                            layer_cmd::set_margin(self.widget_surface_id, top, right, bottom, left)
-                        }
-                        EditMessage::SetAnchor(_) => {
-                            edit_state.update(msg);
-                            let (top, right, bottom, left) = edit_state.layout.margins();
-                            let anchor = edit_state.layout.anchor.to_layer_anchor();
+                        EditMessage::SetGridPosition(pos) => {
+                            edit_state.update(EditMessage::SetGridPosition(pos));
+                            let (anchor, (top, right, bottom, left), _size, _scale) =
+                                edit_state.layout.calculate_geometry(self.screen_w, self.screen_h);
                             Task::batch(vec![
                                 layer_cmd::set_anchor(self.widget_surface_id, anchor),
                                 layer_cmd::set_margin(
@@ -482,17 +574,25 @@ impl Application for ToodleApp {
                                 ),
                             ])
                         }
-                        EditMessage::SetWidth(_) | EditMessage::SetHeight(_) => {
-                            edit_state.update(msg);
-                            layer_cmd::set_size(
-                                self.widget_surface_id,
-                                Some(edit_state.layout.width),
-                                Some(edit_state.layout.height),
-                            )
-                        }
-                        EditMessage::SetFontScale(_) => {
-                            edit_state.update(msg);
-                            Task::none()
+                        EditMessage::SetSizeStage(stage) => {
+                            edit_state.update(EditMessage::SetSizeStage(stage));
+                            let (anchor, (top, right, bottom, left), (w, h), _scale) =
+                                edit_state.layout.calculate_geometry(self.screen_w, self.screen_h);
+                            Task::batch(vec![
+                                layer_cmd::set_size(
+                                    self.widget_surface_id,
+                                    Some(w),
+                                    Some(h),
+                                ),
+                                layer_cmd::set_anchor(self.widget_surface_id, anchor),
+                                layer_cmd::set_margin(
+                                    self.widget_surface_id,
+                                    top,
+                                    right,
+                                    bottom,
+                                    left,
+                                ),
+                            ])
                         }
                         EditMessage::Save | EditMessage::Cancel => Task::none(),
                     }
@@ -508,6 +608,9 @@ impl Application for ToodleApp {
                 }
 
                 info!("Config reloaded via file watcher from external change");
+                let old_output_clean = self.config.display.output.as_deref().map(clean_display_name);
+                let new_output_clean = new_config.display.output.as_deref().map(clean_display_name);
+                let display_changed = old_output_clean != new_output_clean;
                 let location_changed =
                     (self.config.weather.latitude - new_config.weather.latitude).abs() > 0.0001
                         || (self.config.weather.longitude - new_config.weather.longitude).abs()
@@ -529,11 +632,21 @@ impl Application for ToodleApp {
                     }));
                 }
 
+                if display_changed {
+                    info!(
+                        "Display target changed to {:?}. Recreating widget surface.",
+                        self.config.display.output
+                    );
+                    tasks.push(self.recreate_widget());
+                    return Task::batch(tasks);
+                }
+
                 if let WidgetState::Normal = self.state {
-                    let (top, right, bottom, left) = self.config.layout.margins();
+                    let (anchor, (top, right, bottom, left), (w, h), _) =
+                        self.config.layout.calculate_geometry(self.screen_w, self.screen_h);
                     tasks.push(layer_cmd::set_anchor(
                         self.widget_surface_id,
-                        self.config.layout.anchor.to_layer_anchor(),
+                        anchor,
                     ));
                     tasks.push(layer_cmd::set_margin(
                         self.widget_surface_id,
@@ -544,8 +657,8 @@ impl Application for ToodleApp {
                     ));
                     tasks.push(layer_cmd::set_size(
                         self.widget_surface_id,
-                        Some(self.config.layout.width),
-                        Some(self.config.layout.height),
+                        Some(w),
+                        Some(h),
                     ));
                     tasks.push(layer_cmd::set_input_zone(
                         self.widget_surface_id,
@@ -554,6 +667,70 @@ impl Application for ToodleApp {
                 }
 
                 Task::batch(tasks)
+            }
+
+            Message::WaylandOutput(output_event, wl_output) => {
+                match output_event {
+                    OutputEvent::Created(info_opt) => {
+                        let name = info_opt.and_then(|info| info.name);
+                        if let Some(entry) = self.outputs.iter_mut().find(|e| e.output == wl_output) {
+                            if name.is_some() {
+                                entry.name = name;
+                            }
+                        } else {
+                            self.outputs.push(OutputEntry {
+                                name,
+                                output: wl_output,
+                            });
+                        }
+                    }
+                    OutputEvent::InfoUpdate(info) => {
+                        if let Some((w, h)) = info.logical_size {
+                            if w > 0 && h > 0 {
+                                self.screen_w = w as u32;
+                                self.screen_h = h as u32;
+                            }
+                        }
+                        if let Some(entry) = self.outputs.iter_mut().find(|e| e.output == wl_output) {
+                            entry.name = info.name;
+                        } else {
+                            self.outputs.push(OutputEntry {
+                                name: info.name,
+                                output: wl_output,
+                            });
+                        }
+                    }
+                    OutputEvent::Removed => {
+                        self.outputs.retain(|e| e.output != wl_output);
+                    }
+                }
+
+                // If user configured a specific display output (e.g. "DP-2"),
+                // and that display has just become available, relocate the widget.
+                if let Some(target) = &self.config.display.output {
+                    let clean_target = clean_display_name(target);
+                    if !clean_target.is_empty() {
+                        let is_available = self.outputs.iter().any(|e| {
+                            e.name
+                                .as_deref()
+                                .map(|n| clean_display_name(n).eq_ignore_ascii_case(&clean_target))
+                                .unwrap_or(false)
+                        });
+                        let current_clean = self
+                            .current_assigned_output
+                            .as_deref()
+                            .map(clean_display_name);
+                        if is_available && current_clean.as_deref() != Some(clean_target.as_str()) {
+                            info!(
+                                "Configured target display '{}' discovered! Relocating widget.",
+                                clean_target
+                            );
+                            return self.recreate_widget();
+                        }
+                    }
+                }
+
+                Task::none()
             }
         }
     }
@@ -578,7 +755,19 @@ impl Application for ToodleApp {
             }
         });
 
-        Subscription::batch(vec![tick, watcher, weather_sub, escape_key])
+        let wayland_outputs = cosmic::iced::event::listen_with(|event, _status, _id| {
+            if let Event::PlatformSpecific(PlatformSpecific::Wayland(WaylandEvent::Output(
+                output_event,
+                wl_output,
+            ))) = event
+            {
+                Some(Message::WaylandOutput(output_event, wl_output))
+            } else {
+                None
+            }
+        });
+
+        Subscription::batch(vec![tick, watcher, weather_sub, escape_key, wayland_outputs])
     }
 
     fn view(&self) -> Element<'_, Self::Message> {

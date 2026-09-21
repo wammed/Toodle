@@ -1,17 +1,13 @@
-use crate::config::{Anchor, LayoutConfig};
+use crate::config::{get_size_stage, GridPosition, LayoutConfig};
 use cosmic::Element;
 use cosmic::iced::widget::{column, container, row, scrollable, text};
 use cosmic::iced::{Alignment, Border, Color, Length, Shadow};
-use cosmic::widget::{button, slider};
+use cosmic::widget::button;
 
 #[derive(Debug, Clone)]
 pub enum EditMessage {
-    SetAnchor(Anchor),
-    SetMarginX(i32),
-    SetMarginY(i32),
-    SetWidth(u32),
-    SetHeight(u32),
-    SetFontScale(f32),
+    SetGridPosition(GridPosition),
+    SetSizeStage(u8),
     Save,
     Cancel,
 }
@@ -20,35 +16,33 @@ pub enum EditMessage {
 pub struct EditState {
     pub layout: LayoutConfig,
     pub font_scale: f32,
+    pub screen_w: u32,
+    pub screen_h: u32,
 }
 
 impl EditState {
-    pub fn new(current: LayoutConfig, font_scale: f32) -> Self {
+    pub fn new(current: LayoutConfig, _font_scale: f32, screen_w: u32, screen_h: u32) -> Self {
+        let stage_info = get_size_stage(current.size_stage);
         Self {
             layout: current,
-            font_scale,
+            font_scale: stage_info.font_scale,
+            screen_w,
+            screen_h,
         }
     }
 
     pub fn update(&mut self, message: EditMessage) {
         match message {
-            EditMessage::SetAnchor(anchor) => {
-                self.layout.anchor = anchor;
+            EditMessage::SetGridPosition(pos) => {
+                self.layout.grid_position = pos;
             }
-            EditMessage::SetMarginX(val) => {
-                self.layout.margin_x = val.max(0);
-            }
-            EditMessage::SetMarginY(val) => {
-                self.layout.margin_y = val.max(0);
-            }
-            EditMessage::SetWidth(val) => {
-                self.layout.width = val.max(160);
-            }
-            EditMessage::SetHeight(val) => {
-                self.layout.height = val.max(80);
-            }
-            EditMessage::SetFontScale(val) => {
-                self.font_scale = val.clamp(0.3, 10.0);
+            EditMessage::SetSizeStage(stage) => {
+                let stage = stage.clamp(1, 10);
+                self.layout.size_stage = stage;
+                let info = get_size_stage(stage);
+                self.layout.width = info.width;
+                self.layout.height = info.height;
+                self.font_scale = info.font_scale;
             }
             EditMessage::Save | EditMessage::Cancel => {}
         }
@@ -58,131 +52,138 @@ impl EditState {
         // Top action bar
         let header_actions = row![
             button::suggested("Done (Save)")
-                .width(Length::Fill)
+                .padding([6, 14])
                 .on_press(Message::from(EditMessage::Save)),
-            button::destructive("Cancel")
-                .width(Length::Fill)
+            button::standard("Cancel")
+                .padding([6, 12])
                 .on_press(Message::from(EditMessage::Cancel)),
         ]
         .spacing(8)
         .align_y(Alignment::Center);
 
-        let title = text("Edit Widget Layout").size(16);
+        let title = text("Edit Position & Size").size(16);
+        let hint = container(text(
+            "Select one of 9 display zones (3x3 grid) and a size stage (up to 2560x1440 WQHD). Font scale adapts automatically."
+        ).size(12))
+        .style(|_| container::Style {
+            text_color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.65)),
+            ..Default::default()
+        });
 
-        let hint = text(
-            "Changes are previewed on desktop in real-time.\nPress Esc key anytime to cancel.",
-        )
-        .size(11);
-
-        // Anchor selection buttons
-        let anchor_btn = |label: &'static str, a: Anchor| {
-            let is_selected = self.layout.anchor == a;
+        // 9-Zone Grid (3 columns × 3 rows)
+        let cur_pos = self.layout.grid_position;
+        let grid_btn = |pos: GridPosition, label: &'static str| {
+            let is_selected = cur_pos == pos;
             let b = if is_selected {
                 button::suggested(label)
             } else {
                 button::standard(label)
             };
-            b.on_press(Message::from(EditMessage::SetAnchor(a)))
+            b.width(Length::Fill)
+                .padding([8, 2])
+                .on_press(Message::from(EditMessage::SetGridPosition(pos)))
         };
 
-        let anchor_row = row![
-            text("Anchor:").size(13).width(Length::Fixed(100.0)),
-            anchor_btn("TL", Anchor::TopLeft),
-            anchor_btn("TR", Anchor::TopRight),
-            anchor_btn("BL", Anchor::BottomLeft),
-            anchor_btn("BR", Anchor::BottomRight),
+        let pos_header = row![
+            text("Screen Position (9-Zone Grid)").size(13),
+            text(format!("Active: {}", cur_pos.label())).size(12),
         ]
-        .spacing(6)
+        .spacing(12)
         .align_y(Alignment::Center);
 
-        // Margin X slider (0 .. 3840)
-        let margin_x_slider = slider(0..=3840, self.layout.margin_x, |val| {
-            Message::from(EditMessage::SetMarginX(val))
-        })
-        .width(Length::Fill);
-
-        let margin_x_row = row![
-            text(format!("Margin X: {} px", self.layout.margin_x))
-                .size(13)
-                .width(Length::Fixed(130.0)),
-            margin_x_slider,
+        // Row 0 (Top)
+        let row_top = row![
+            grid_btn(GridPosition::TopLeft, "Top-L"),
+            grid_btn(GridPosition::TopCenter, "Top-C"),
+            grid_btn(GridPosition::TopRight, "Top-R"),
         ]
-        .spacing(8)
+        .spacing(6);
+
+        // Row 1 (Middle)
+        let row_mid = row![
+            grid_btn(GridPosition::MiddleLeft, "Mid-L"),
+            grid_btn(GridPosition::Center, "Center"),
+            grid_btn(GridPosition::MiddleRight, "Mid-R"),
+        ]
+        .spacing(6);
+
+        // Row 2 (Bottom)
+        let row_bot = row![
+            grid_btn(GridPosition::BottomLeft, "Bot-L"),
+            grid_btn(GridPosition::BottomCenter, "Bot-C"),
+            grid_btn(GridPosition::BottomRight, "Bot-R"),
+        ]
+        .spacing(6);
+
+        let grid_section = column![
+            pos_header,
+            row_top,
+            row_mid,
+            row_bot,
+        ]
+        .spacing(6);
+
+        // 10-Stage Size Selection (1 ..= 10)
+        let cur_stage = self.layout.size_stage.clamp(1, 10);
+        let active_info = get_size_stage(cur_stage);
+
+        let size_header = row![
+            text("Widget Size (10 Stages)").size(13),
+            text(format!(
+                "Stage {}: {} ({}×{}, {:.2}x)",
+                active_info.stage, active_info.label, active_info.width, active_info.height, active_info.font_scale
+            )).size(12),
+        ]
+        .spacing(12)
         .align_y(Alignment::Center);
 
-        // Margin Y slider (0 .. 2160)
-        let margin_y_slider = slider(0..=2160, self.layout.margin_y, |val| {
-            Message::from(EditMessage::SetMarginY(val))
-        })
-        .width(Length::Fill);
+        let stage_btn = |stage: u8, label: &'static str| {
+            let is_selected = cur_stage == stage;
+            let b = if is_selected {
+                button::suggested(label)
+            } else {
+                button::standard(label)
+            };
+            b.width(Length::Fill)
+                .padding([7, 2])
+                .on_press(Message::from(EditMessage::SetSizeStage(stage)))
+        };
 
-        let margin_y_row = row![
-            text(format!("Margin Y: {} px", self.layout.margin_y))
-                .size(13)
-                .width(Length::Fixed(130.0)),
-            margin_y_slider,
+        // Stages 1..=5
+        let stages_row_1 = row![
+            stage_btn(1, "1: 280"),
+            stage_btn(2, "2: 380"),
+            stage_btn(3, "3: 490"),
+            stage_btn(4, "4: 620"),
+            stage_btn(5, "5: 780"),
         ]
-        .spacing(8)
-        .align_y(Alignment::Center);
+        .spacing(6);
 
-        // Font scale slider (30% .. 1000%)
-        let scale_percent = (self.font_scale * 100.0).round() as i32;
-        let scale_slider = slider(30..=1000, scale_percent, |val| {
-            Message::from(EditMessage::SetFontScale(val as f32 / 100.0))
-        })
-        .width(Length::Fill);
-
-        let scale_row = row![
-            text(format!("Font Scale: {}%", scale_percent))
-                .size(13)
-                .width(Length::Fixed(130.0)),
-            scale_slider,
+        // Stages 6..=10
+        let stages_row_2 = row![
+            stage_btn(6, "6: 960"),
+            stage_btn(7, "7: 1180"),
+            stage_btn(8, "8: 1440"),
+            stage_btn(9, "9: 1740"),
+            stage_btn(10, "10: 2060"),
         ]
-        .spacing(8)
-        .align_y(Alignment::Center);
+        .spacing(6);
 
-        // Width slider (160 .. 3840)
-        let width_slider = slider(160..=3840, self.layout.width, |val| {
-            Message::from(EditMessage::SetWidth(val))
-        })
-        .width(Length::Fill);
-
-        let width_row = row![
-            text(format!("Width: {} px", self.layout.width))
-                .size(13)
-                .width(Length::Fixed(130.0)),
-            width_slider,
+        let size_section = column![
+            size_header,
+            stages_row_1,
+            stages_row_2,
         ]
-        .spacing(8)
-        .align_y(Alignment::Center);
-
-        // Height slider (80 .. 2160)
-        let height_slider = slider(80..=2160, self.layout.height, |val| {
-            Message::from(EditMessage::SetHeight(val))
-        })
-        .width(Length::Fill);
-
-        let height_row = row![
-            text(format!("Height: {} px", self.layout.height))
-                .size(13)
-                .width(Length::Fixed(130.0)),
-            height_slider,
-        ]
-        .spacing(8)
-        .align_y(Alignment::Center);
+        .spacing(6);
 
         let controls = column![
             title,
             header_actions,
             hint,
-            anchor_row,
-            margin_x_row,
-            margin_y_row,
-            scale_row,
-            width_row,
-            height_row,
+            grid_section,
+            size_section,
         ]
-        .spacing(10)
+        .spacing(14)
         .padding(14);
 
         let scroll = scrollable(controls)

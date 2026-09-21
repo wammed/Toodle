@@ -37,7 +37,7 @@
 5. Edit Mode は Widget 本体の Surface を直接編集するのではなく、`Layer::Top` の独立 Edit Layout Panel と組み合わせて実現する（2 Surface 方式）。
 6. Normal Mode では Widget 本体の通常 Surface を操作対象とし、右クリックで Context Menu を開く。
 7. Edit Mode では Widget 本体の Input Region を一時的に全体（`None`）へ拡張し、同時に Edit Layout Panel を表示する。終了時に通常矩形へ戻す。
-8. レイアウト変更は Anchor / Margin / Width / Height を基本とし、Font Scale も Edit Layout から変更できる。
+8. レイアウト変更はディスプレイ 9分割グリッド配置（Top/Mid/Bot × Left/Center/Right）および WQHD 対応 10段階固定サイズ（ウィンドウ寸法と時刻・日付・天候フォントサイズが完全連動）を基本とする。
 9. レイアウト変更中は既存の Widget Surface を破棄・再生成せず、Layer Surface Command (`set_anchor`, `set_margin`, `set_size`, `set_input_zone`) によるインプレース更新を徹底する（フリッカー防止）。
 10. 設定は `~/.config/toodle/config.toml` に保存する。
 11. `toodle-settings` は設定変更をアトミック保存し、`toodle` は file watcher により変更を再読み込みする。
@@ -99,6 +99,20 @@
     - デスクトップエントリファイルを作成・登録。
 12. **設計書 v0.3 の策定と公式 Baseline 化**:
     - 実機検証で成立した挙動・決定事項（独立 Top サーフェス、2 サーフェス Edit Layout、インプレース更新、ソリッド背景、矩形 Input Zone、Known Gaps の明示）を新設計書 [`docs/Drafts/Toodle-Design-Docs-v0.3.md`](file:///home/susie/GitHUB/wammed/Toodle/docs/Drafts/Toodle-Design-Docs-v0.3.md) に集約。
+13. **ローカルインストール構造のリファクタリング（tools/install-local.sh 分離）**:
+    - `.cargo/config.toml` 内の `rustc-wrapper` による暗黙的自動コピーを完全廃止。
+    - `cargo build --release` はバイナリ生成のみ行い、ユーザー環境（`$HOME/.local/bin`）へのインストールは明示的な `tools/install-local.sh` に分離。将来の `.deb` や RPM、AUR パッケージングと独立した構造へ整理。
+14. **スライダー伸縮のチラつき・ブラー解消と 9分割配置・10段階固定サイズへの設計刷新**:
+    - 連続値スライダーによるウィンドウ伸縮時に発生していたチラつきやゴースト（四角いブラー）描画を根本解消するため設計変更。
+    - 自由ピクセルマージン・スライダー操作を全廃し、**「ディスプレイ 9分割配置（3×3 グリッド: TopLeft/Center/Right, MiddleLeft/Center/Right, BottomLeft/Center/Right）」** を導入。
+    - ウィンドウサイズを WQHD (2560×1440) を上限とする **10段階のプリセットサイズ（280px 〜 2060px）** に固定化し、フォントサイズ（時刻・日付・天候）をウィンドウサイズに完全連動。
+    - 設定アプリ側の冗長な `font_scale` スライダーを廃止し、統一サイズセレクタに集約。
+15. **テキスト領域の水平揃え（Horizontal Alignment）の最適化**:
+    - ウィンドウ内のテキスト右余白が過大になる問題、および Center 配置時にテキストが中央に来ない問題を解消。
+    - 配置位置（Left系、Center系、Right系）に応じた動的 `align_x`（`Alignment::Start`, `Alignment::Center`, `Alignment::End`）を導入し、中央揃えおよび左右の自然な配置を実現。
+16. **垂直位置（Vertical Alignment）およびサイズ960以上の下部見切れ解消**:
+    - 下部配置時にテキストが画面最下部へ沈み込んで見えていた問題を解消するため、コンテナの垂直配置を `align_y = Alignment::Start`（上詰め＋padding）に統一。
+    - サイズ960以上のステージ（Stage 6〜10）で文字・天候アイコンの下部がクリップ（見切れ）していた原因を特定。フォント行高・アイコン境界ボックスに対して不足していたウィンドウ縦幅（`height`）を 440px〜920px へ大幅拡張し、十分なヘッドルームを確保。
 
 ---
 
@@ -112,16 +126,16 @@
 - `set_input_zone` により、Normal 時は `content_bounds()`（Layout 幅/高さを基準とした矩形領域）に入力を制限し、余白の透明領域はデスクトップへクリック透過。Edit 時は入力領域を全体（`None`）に拡張。
 
 ### B. Edit Layout アーキテクチャ (2 Surface 方式)
-- **対象ファイル**: [`src/main.rs`](file:///home/susie/GitHUB/wammed/Toodle/src/main.rs), [`src/widget/mod.rs`](file:///home/susie/GitHUB/wammed/Toodle/src/widget/mod.rs)
+- **対象ファイル**: [`src/main.rs`](file:///home/susie/GitHUB/wammed/Toodle/src/main.rs), [`src/widget/mod.rs`](file:///home/susie/GitHUB/wammed/Toodle/src/widget/mod.rs), [`src/widget/edit_mode.rs`](file:///home/susie/GitHUB/wammed/Toodle/src/widget/edit_mode.rs)
 - v0.2 の「Widget Surface 自体を編集 UI に変形する」方式から、v0.3 では「Bottom Widget Surface + Top 独立 Edit Layout Panel」の 2 Surface 方式を正式採用。
-- Edit Layout Panel から Margin, Size, Anchor, Font Scale を操作すると、Bottom の Widget Surface に対してインプレース Layer Command が即時発行されリアルタイムに変形。
+- Edit Layout Panel には 9 分割グリッド位置セレクタ（3×3 ボタン）および 10 段階サイズセレクタ（1..=5, 6..=10 の 2 行ボタン群）を配置。操作に応じて Bottom の Widget Surface に対してインプレース Layer Command が即時発行されリアルタイムに変形。
 - Save 時は Config 保存後に Panel を破棄し、Cancel 時は編集前の状態を Layer Command で復元。
 
 ### C. inotify 高速ファイル監視による設定ホットリロード & リアルタイム追従
 - **対象ファイル**: [`src/config/mod.rs`](file:///home/susie/GitHUB/wammed/Toodle/src/config/mod.rs), [`src/settings/main.rs`](file:///home/susie/GitHUB/wammed/Toodle/src/settings/main.rs)
 - `toodle` はバックグラウンドスレッドで `~/.config/toodle/` ディレクトリを `notify::recommended_watcher` で非同期監視。
-- `toodle-settings` 側でスライダー等を動かした瞬間にアトミック保存（一時ファイル `.tmp` 書込 → `rename`）を実行。
-- ファイル変更検知後に新設定を読み込み、ウィジェット側へインプレース反映。安全域クランプ（マージン `0..=2560`/`0..=1440`、幅 `150..=1200`、高さ `60..=800`）により画面外消失を防止。
+- `toodle-settings` 側でサイズボタンや位置ボタンを押した瞬間にアトミック保存（一時ファイル `.tmp` 書込 → `rename`）を実行。
+- ファイル変更検知後に新設定を読み込み、ウィジェット側へインプレース反映。
 
 ### D. 組み込み 4 フォントファミリ & 10 テーマプリセット
 - **対象ファイル**: [`src/clock/fonts.rs`](file:///home/susie/GitHUB/wammed/Toodle/src/clock/fonts.rs), [`src/config/theme.rs`](file:///home/susie/GitHUB/wammed/Toodle/src/config/theme.rs), [`src/widget/mod.rs`](file:///home/susie/GitHUB/wammed/Toodle/src/widget/mod.rs)
@@ -141,6 +155,34 @@
 ### F. ソリッドダーク UI スタイリング
 - **対象ファイル**: [`src/settings/main.rs`](file:///home/susie/GitHUB/wammed/Toodle/src/settings/main.rs), [`src/popup/mod.rs`](file:///home/susie/GitHUB/wammed/Toodle/src/popup/mod.rs), [`src/popup/calendar.rs`](file:///home/susie/GitHUB/wammed/Toodle/src/popup/calendar.rs), [`src/popup/forecast.rs`](file:///home/susie/GitHUB/wammed/Toodle/src/popup/forecast.rs)
 - デスクトップ背景による可読性低下を防ぐため、設定ウィンドウおよび全ポップアップサーフェス（右クリックメニュー、カレンダー、週間予報、Edit Layout Panel）に不透明ダークソリッド背景（`Color::from_rgb(0.12, 0.13, 0.17)`）を統一適用。
+
+### G. ディスプレイ 9分割配置（3×3 グリッド）アーキテクチャ
+- **対象ファイル**: [`src/config/mod.rs`](file:///home/susie/GitHUB/wammed/Toodle/src/config/mod.rs), [`src/widget/mod.rs`](file:///home/susie/GitHUB/wammed/Toodle/src/widget/mod.rs), [`src/widget/edit_mode.rs`](file:///home/susie/GitHUB/wammed/Toodle/src/widget/edit_mode.rs), [`src/settings/main.rs`](file:///home/susie/GitHUB/wammed/Toodle/src/settings/main.rs)
+- ディスプレイ画面を 3列 × 3行（TopLeft, TopCenter, TopRight, MiddleLeft, Center, MiddleRight, BottomLeft, BottomCenter, BottomRight）に分割してレイアウトを管理。
+- 固定ガター `gutter = 32px` を基準とし、中央配置時は `(screen_w - w) / 2`、`(screen_h - h) / 2` を自動計算。
+- ウィジェット内部の水平揃え（`align_x`）を配置位置に連動させ、左配置は左詰め、中央配置は完全中央揃え、右配置は右詰めで自然なタイポグラフィを実現。
+- コンテナ垂直揃えは `align_y = Alignment::Start` に統一し、下部配置時でも下端への沈み込みを防止。
+
+### H. 10段階固定サイズ（WQHD対応）& 完全連動タイポグラフィ
+- **対象ファイル**: [`src/config/mod.rs`](file:///home/susie/GitHUB/wammed/Toodle/src/config/mod.rs), [`src/widget/mod.rs`](file:///home/susie/GitHUB/wammed/Toodle/src/widget/mod.rs)
+- 自由スライダーによる拡大縮小時のチラつきやゴースト描画を排除するため、WQHD (2560×1440) まで対応する 10 段階のプリセット寸法（`SIZE_STAGES`）を定義：
+  - Stage 1 (Compact): 280×130, time: 38, date: 14
+  - Stage 2 (Default): 380×175, time: 52, date: 19
+  - Stage 3 (Medium): 490×225, time: 68, date: 25
+  - Stage 4 (Standard): 620×285, time: 88, date: 32
+  - Stage 5 (Large): 780×355, time: 112, date: 40
+  - Stage 6 (X-Large): 960×440, time: 140, date: 50
+  - Stage 7 (2X-Large): 1180×540, time: 174, date: 62
+  - Stage 8 (Huge): 1440×650, time: 215, date: 76
+  - Stage 9 (Giant): 1740×780, time: 260, date: 92
+  - Stage 10 (Max WQHD): 2060×920, time: 310, date: 110
+- ウィンドウ縦幅（`height`）は大きなフォントサイズ時の行高・天気アイコン境界ボックスを余裕をもって包含する十分なヘッドルームを確保し、クリップ・見切れをゼロ化。
+- ウィンドウサイズ変更とフォントサイズ（時刻・日付・天候）が 1:1 で同期するため、設定画面の単一サイズセレクタで完結。
+
+### I. ビルド＆ローカルインストールの責務分離
+- **対象ファイル**: [`tools/install-local.sh`](file:///home/susie/GitHUB/wammed/Toodle/tools/install-local.sh), [`.cargo/config.toml`](file:///home/susie/GitHUB/wammed/Toodle/.cargo/config.toml)
+- `cargo build --release` はバイナリ生成のみを担当し、ユーザーの `$HOME/.local/bin` 等のファイルシステムを変更しない安全性を保証。
+- 開発者がローカル環境にバイナリをインストールする際は `./tools/install-local.sh` を明示的に実行。将来の配布用パッケージング（.deb, RPM, PKGBUILD 等）と整合性の取れたアーキテクチャを確立。
 
 ---
 

@@ -72,17 +72,15 @@
   - **Bottom サーフェス**: `Layer::Bottom` で動作する実際の `Toodle` ウィジェット。
   - **Top サーフェス**: `Layer::Top` に独立して生成される `Edit Layout Panel`。
 - **パネル上の操作コントロール**:
-  - デスクトップアンカー (`TopLeft`, `TopRight`, `BottomLeft`, `BottomRight`)。
-  - Margin X (`0..=2560 px`) および Margin Y (`0..=1440 px`) スライダー。
-  - ウィジェット幅 Width (`150..=1200 px`) および高さ Height (`60..=800 px`) スライダー。
-  - Font Scale スライダー。
+  - **9分割グリッド配置**: 3×3 の直感的なマトリクスボタン（`TopLeft`, `TopCenter`, `TopRight`, `MiddleLeft`, `Center`, `MiddleRight`, `BottomLeft`, `BottomCenter`, `BottomRight`）。
+  - **10段階固定サイズ（WQHD対応）**: 2行のプリセットサイズボタン（`1: 280`, `2: 380`, `3: 490`, `4: 620`, `5: 780` / `6: 960`, `7: 1180`, `8: 1440`, `9: 1740`, `10: 2060`）。
   - `Save` ボタン: 変更を `config.toml` に保存し、パネルを閉じて入力領域を通常へ復元。
   - `Cancel` ボタン: 編集を破棄し、編集前の状態をインプレース Layer Command で復元して閉じる。
 - **入力領域（Input Region）の制御**:
   - Edit モード開始時、ウィジェット本体の入力領域を全体（`None`）へ拡張。
   - 終了時に通常の `content_bounds()` 矩形領域へ復帰。
 - **チラつきゼロのインプレース更新**:
-  - スライダー操作時はサーフェスを再生成せず、既存サーフェスへ Layer Command（`set_margin`, `set_size`, `set_anchor`）を発行して 0ms で滑らかに更新。
+  - ボタン選択時はサーフェスを再生成せず、既存サーフェスへ Layer Command（`set_margin`, `set_size`, `set_anchor`）を発行して 0ms で滑らかに更新。
 
 ---
 
@@ -97,14 +95,12 @@
 - **16色固定カラーパレット**:
   - チェックマーク（`✓`）付きのカラーパレット。
   - 厳選カラー: Pure White, Soft Silver, Cool Slate, Sky Blue, COSMIC Blue, Indigo, Purple, Rose Pink, Crimson, Coral Red, Orange, Amber Gold, Sun Yellow, Lime, Emerald Green, Teal Cyan。
-- **Font Scale スライダー**: `30%` から `1000%` まで 5% 刻みで調整可能。
 - **Text Shadow スイッチ**: テキストシャドウの ON/OFF を即時切り替え。
 
 ### 5.2 Layout タブ
-- **デスクトップアンカー**: 4 つのアンカーボタン（`TopLeft`, `TopRight`, `BottomLeft`, `BottomRight`）。
-- **Margin X & Margin Y スライダー**: `0..=2560 px` (X) および `0..=1440 px` (Y) に制限され、画面外への飛び出しを防止。
-- **Width & Height スライダー**: `150..=1200 px` (幅) および `60..=800 px` (高さ) に制限。
-- **リアルタイム反映**: スライダー操作時にアトミック保存され、inotify 経由でデスクトップウィジェットが遅延なく連動。
+- **9分割ディスプレイ配置**: 3×3 のグリッド配置ボタン（`TopLeft` 〜 `BottomRight`）。
+- **10段階サイズセレクタ**: 画面サイズに合わせた 10 段階の寸法プリセットボタン。ウィンドウサイズ変更に伴い、フォントサイズ（時刻・日付・天候）が最適比率で完全連動。
+- **リアルタイム反映**: ボタン操作時にアトミック保存され、inotify 経由でデスクトップウィジェットが遅延なく連動。
 
 ### 5.3 Weather タブ
 - **ロケーション入力**: `Location Name`, `Latitude`, `Longitude` テキスト入力フィールド。
@@ -115,3 +111,11 @@
 ### 5.4 Display タブ
 - **出力先ディスプレイ名**: 対象 Wayland 出力先（例: `"DP-1"`）の指定フィールド。
 - *(※注: 設定値として保持されますが、特定ディスプレイへの明示的バインドはロードマップ課題であり、現状は `Active Output` が使用されます)*。
+
+---
+
+## 6. ビルド & ローカルインストール (`tools/install-local.sh`)
+
+- **`cargo build --release`**: バイナリ（`toodle`, `toodle-settings`）のコンパイルのみを行い、ユーザーのホームディレクトリやシステム環境を一切変更しません。
+- **`./tools/install-local.sh`**: 開発者がローカル環境への反映を意図した場合に明示的に実行し、リリースバイナリを `$HOME/.local/bin` にインストールします。
+

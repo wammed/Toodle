@@ -72,17 +72,15 @@ Rather than morphing the widget itself into an edit UI, Toodle employs a two-sur
   - **Bottom Surface**: The actual `Toodle` widget on `Layer::Bottom`.
   - **Top Surface**: An independent `Edit Layout Panel` on `Layer::Top`.
 - **Controls Available on Panel**:
-  - Desktop Anchor (`TopLeft`, `TopRight`, `BottomLeft`, `BottomRight`).
-  - Margin X (`0..=2560 px`) and Margin Y (`0..=1440 px`).
-  - Widget Width (`150..=1200 px`) and Height (`60..=800 px`).
-  - Font Scale slider.
+  - **9-Zone Display Grid**: 3×3 matrix buttons (`TopLeft`, `TopCenter`, `TopRight`, `MiddleLeft`, `Center`, `MiddleRight`, `BottomLeft`, `BottomCenter`, `BottomRight`).
+  - **10 Discrete Size Stages (WQHD-ready)**: 2 rows of size preset buttons (`1: 280`, `2: 380`, `3: 490`, `4: 620`, `5: 780` / `6: 960`, `7: 1180`, `8: 1440`, `9: 1740`, `10: 2060`).
   - `Save` button: Commits changes to `config.toml`, closes panel, restores input bounds.
   - `Cancel` button: Discards edits, restores saved state via in-place layer commands, closes panel.
 - **Input Region Handling**:
   - During edit mode, the widget surface expands its input region to the full surface (`None`).
   - On exit, input region returns to the `content_bounds()` bounding box.
 - **Zero Flicker**:
-  - Live slider changes apply immediately to the bottom widget using in-place layer commands (`set_margin`, `set_size`, `set_anchor`) without destroying or recreating surfaces.
+  - Button selections apply immediately to the bottom widget using in-place layer commands (`set_margin`, `set_size`, `set_anchor`) without destroying or recreating surfaces.
 
 ---
 
@@ -97,14 +95,12 @@ A native XDG Toplevel application (`720 x 780`, solid dark background) providing
 - **16-Color Palette Grid**:
   - Interactive swatches with checkmarks (`✓`) and high-contrast borders.
   - Curated colors: Pure White, Soft Silver, Cool Slate, Sky Blue, COSMIC Blue, Indigo, Purple, Rose Pink, Crimson, Coral Red, Orange, Amber Gold, Sun Yellow, Lime, Emerald Green, Teal Cyan.
-- **Font Scale Slider**: Range from `30%` to `1000%` in `5%` increments.
 - **Text Shadow Toggle**: Instantly toggles ambient text shadow.
 
 ### 5.2 Layout Tab
-- **Desktop Anchor**: Four anchor buttons: `TopLeft`, `TopRight`, `BottomLeft`, `BottomRight`.
-- **Margin X & Margin Y Sliders**: Clamped to `0..=2560 px` (X) and `0..=1440 px` (Y) to prevent widgets from sliding off-screen.
-- **Width & Height Sliders**: Clamped to `150..=1200 px` (W) and `60..=800 px` (H).
-- **Live In-Place Updates**: Moving sliders writes atomically to `config.toml`, updating the desktop widget in real time via inotify.
+- **9-Zone Display Layout**: 3×3 grid buttons (`TopLeft` through `BottomRight`).
+- **10-Stage Size Selector**: 10 preset dimensions optimized for desktop screens. Font sizes (time, date, weather) automatically and proportionally synchronize with window size.
+- **Live In-Place Updates**: Clicking buttons writes atomically to `config.toml`, updating the desktop widget in real time via inotify.
 
 ### 5.3 Weather Tab
 - **Location Inputs**: `Location Name`, `Latitude`, and `Longitude` text fields.
@@ -113,5 +109,12 @@ A native XDG Toplevel application (`720 x 780`, solid dark background) providing
 - **Apply & Refresh Button**: Instantly forces a fresh weather fetch.
 
 ### 5.4 Display Tab
-- **Output Name**: Input field for target Wayland output (e.g. `"DP-1"`).
-- *(Note: Currently stored in configuration; widget binding to specific outputs is a known roadmap gap, currently defaulting to `Active Output`)*.
+- **Target Display Output**: Wayland output name (e.g. `"DP-1"`).
+- *(Note: Stored in config; output binding is a roadmap item; widget currently attaches to `Active Output`)*.
+
+---
+
+## 6. Build & Local Installation (`tools/install-local.sh`)
+
+- **`cargo build --release`**: Only builds the Rust binaries without touching the user's home directory or system paths.
+- **`./tools/install-local.sh`**: Explicitly executed by developers to build and install the release binaries into `$HOME/.local/bin`.
