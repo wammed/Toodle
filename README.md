@@ -25,7 +25,7 @@
 - **Two-Surface Edit Layout Mode**: An independent `Layer::Top` Edit Layout Panel works alongside the running `Layer::Bottom` widget, allowing live in-place margin, dimension, and font scale tuning without surface recreation or visual flicker.
 - **Dedicated Settings App (`toodle-settings`)**: Native XDG Toplevel application (720 x 780, solid dark background) with 4 tabs (Appearance, Layout, Weather, Display), real-time slider updates, 10 theme presets, 16 curated colors, and city presets.
 - **Live Inotify Hot-Reloading**: Automatically updates running widgets in real-time when `~/.config/toodle/config.toml` changes (25ms response).
-- **100% Embedded Fonts**: Includes Roboto Sans, JetBrains Mono, DejaVu Serif, and Open Sans statically embedded into the binary via `include_bytes!`. No external font dependencies.
+- **100% Embedded Fonts**: Includes Roboto Sans, JetBrains Mono, DejaVu Serif, Open Sans, and Weather Icons statically embedded into the binary via `include_bytes!`. Weather condition icons are rendered using the embedded Weather Icons font (`resources/fonts/WeatherIcons.ttf`, SIL Open Font License 1.1) rather than Unicode emojis, ensuring identical rendering across all environments without external font dependencies.
 
 ---
 
@@ -159,3 +159,4 @@ temperature_unit = "Celsius" # Celsius, Fahrenheit
 ## License
 
 This project is licensed under the [GPL-3.0-or-later](LICENSE) license.
+The embedded Weather Icons font by Erik Flowers is licensed under the [SIL Open Font License 1.1](THIRD_PARTY_LICENSES/WEATHER_ICONS_LICENSE.txt). See [THIRD_PARTY_LICENSES/README.md](THIRD_PARTY_LICENSES/README.md) for details.

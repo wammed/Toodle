@@ -1,12 +1,12 @@
-use chrono::{Local, NaiveDate};
-use cosmic::iced::widget::{column, container, row, text};
-use cosmic::iced::{Alignment, Border, Color, Length, Shadow};
-use cosmic::widget::button;
-use cosmic::Element;
+use super::PopupMessage;
 use crate::config::Config;
 use crate::weather::WeatherData;
 use crate::widget::format_temperature;
-use super::PopupMessage;
+use chrono::{Local, NaiveDate};
+use cosmic::Element;
+use cosmic::iced::widget::{column, container, row, text};
+use cosmic::iced::{Alignment, Border, Color, Length, Shadow};
+use cosmic::widget::button;
 
 pub fn view_forecast<'a, Message: From<PopupMessage> + Clone + 'static>(
     config: &Config,
@@ -57,8 +57,10 @@ pub fn view_forecast<'a, Message: From<PopupMessage> + Clone + 'static>(
                     day.date.clone()
                 };
 
-                let min_str = format_temperature(day.temp_min_celsius, config.weather.temperature_unit);
-                let max_str = format_temperature(day.temp_max_celsius, config.weather.temperature_unit);
+                let min_str =
+                    format_temperature(day.temp_min_celsius, config.weather.temperature_unit);
+                let max_str =
+                    format_temperature(day.temp_max_celsius, config.weather.temperature_unit);
                 let temp_range = format!("{}  ~  {}", min_str, max_str);
 
                 let date_color = if is_today {
@@ -74,9 +76,21 @@ pub fn view_forecast<'a, Message: From<PopupMessage> + Clone + 'static>(
                         ..Default::default()
                     });
 
-                let emoji = crate::weather::wmo_code_to_emoji(day.weather_code);
-                let condition_str = format!("{} {}", day.condition_text, emoji);
-                let condition_box = container(text(condition_str).size(14))
+                let icon = crate::weather::wmo_code_to_icon(day.weather_code);
+                let icon_text = text(icon.glyph().to_string())
+                    .font(crate::clock::fonts::FONT_WEATHER_ICONS)
+                    .size(16);
+                let moon_glyph = crate::weather::MoonPhase::from_ymd_str(&day.date)
+                    .map(|m| m.glyph().to_string())
+                    .unwrap_or_default();
+                let moon_text = text(moon_glyph)
+                    .font(crate::clock::fonts::FONT_WEATHER_ICONS)
+                    .size(16);
+                let condition_text = text(day.condition_text.clone()).size(14);
+                let condition_row = row![icon_text, moon_text, condition_text]
+                    .spacing(8)
+                    .align_y(Alignment::Center);
+                let condition_box = container(condition_row)
                     .width(Length::FillPortion(4))
                     .style(|_| container::Style {
                         text_color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.85)),
@@ -122,13 +136,12 @@ pub fn view_forecast<'a, Message: From<PopupMessage> + Clone + 'static>(
             list_col.into()
         }
     } else {
-        let hint_box = container(
-            text("Please check network connectivity or try again later.").size(13),
-        )
-        .style(|_| container::Style {
-            text_color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.5)),
-            ..Default::default()
-        });
+        let hint_box =
+            container(text("Please check network connectivity or try again later.").size(13))
+                .style(|_| container::Style {
+                    text_color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.5)),
+                    ..Default::default()
+                });
 
         container(
             column![
@@ -145,9 +158,7 @@ pub fn view_forecast<'a, Message: From<PopupMessage> + Clone + 'static>(
         .into()
     };
 
-    let main_content = column![top_bar, forecast_list]
-        .spacing(20)
-        .padding(24);
+    let main_content = column![top_bar, forecast_list].spacing(20).padding(24);
 
     container(main_content)
         .width(Length::Fill)

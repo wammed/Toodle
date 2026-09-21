@@ -171,7 +171,31 @@ pub fn is_location_match(&self, lat: f64, lon: f64) -> bool {
 
 ## 6. バイナリ組み込みタイポグラフィ
 
-外部システムフォントの有無によって文字のメトリクスが崩れることを防ぐため（設計書第11項）、Roboto、JetBrains Mono、DejaVu Serif、Open Sans の計 8 ファイルを `include_bytes!` でバイナリ内へ静的組み込みしています。どの Linux ディストリビューションでも完全に同一の美しいフォントで描画されます。
+外部システムフォントの有無によって文字のメトリクスが崩れることを防ぐため（設計書第11項）、Roboto、JetBrains Mono、DejaVu Serif、Open Sans のテキストフォントに加え、天気アイコン表示専用の Weather Icons フォント（`resources/fonts/WeatherIcons.ttf`、SIL Open Font License 1.1）を `include_bytes!` でバイナリ内へ静的組み込みしています。どの Linux ディストリビューションでも完全に同一の美しいフォントとアイコンで描画されます。
+
+### 天気アイコン描画パイプライン
+
+OS の絵文字フォントやフォールバックに依存せず、以下の独立した抽象化パイプラインで描画します：
+
+```text
+WMO weather code
+       │
+       ▼
+  WeatherIcon（意味上の天気カテゴリ）
+       │
+       ├────────────────► condition text（テーマ通常フォント）
+       │
+       ▼
+Weather Icons glyph（char）
+       │
+       ▼
+ FONT_WEATHER_ICONS（Weather Icons font）
+       │
+       ▼
+   COSMIC UI（テーマの前景色を適用）
+```
+
+通常文字（時刻、日付、気温、状態テキスト）はユーザー選択のテーマフォントを使用し、天気アイコンのみが独立して常に `FONT_WEATHER_ICONS` で描画されます。
 
 ---
 

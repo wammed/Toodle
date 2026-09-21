@@ -1,13 +1,13 @@
 pub mod calendar;
 pub mod forecast;
 
-pub use calendar::{view_calendar, CalendarState};
+pub use calendar::{CalendarState, view_calendar};
 pub use forecast::view_forecast;
 
+use cosmic::Element;
 use cosmic::iced::widget::{column, container, text};
 use cosmic::iced::{Alignment, Border, Color, Length, Shadow};
 use cosmic::widget::button;
-use cosmic::Element;
 
 #[derive(Debug, Clone)]
 pub enum PopupMessage {
@@ -22,7 +22,8 @@ pub enum PopupMessage {
     Quit,
 }
 
-pub fn view_context_menu<'a, Message: From<PopupMessage> + Clone + 'static>() -> Element<'a, Message> {
+pub fn view_context_menu<'a, Message: From<PopupMessage> + Clone + 'static>() -> Element<'a, Message>
+{
     let title_content = cosmic::iced::widget::row![
         cosmic::widget::icon::from_name("com.github.wammed.toodle").size(24),
         text("Toodle Menu").size(20),

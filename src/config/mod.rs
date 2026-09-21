@@ -5,7 +5,7 @@ use std::fs;
 use std::path::PathBuf;
 use tracing::{info, warn};
 
-pub use theme::{parse_hex_color, COLOR_PALETTE_16, THEME_PRESETS};
+pub use theme::{COLOR_PALETTE_16, THEME_PRESETS, parse_hex_color};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Config {
@@ -58,7 +58,9 @@ impl Default for Anchor {
 }
 
 impl Anchor {
-    pub fn to_layer_anchor(self) -> cosmic::iced::platform_specific::shell::commands::layer_surface::Anchor {
+    pub fn to_layer_anchor(
+        self,
+    ) -> cosmic::iced::platform_specific::shell::commands::layer_surface::Anchor {
         use cosmic::iced::platform_specific::shell::commands::layer_surface::Anchor as LayerAnchor;
         match self {
             Anchor::TopLeft => LayerAnchor::TOP | LayerAnchor::LEFT,
@@ -219,7 +221,10 @@ impl Config {
                         return cfg;
                     }
                     Err(e) => {
-                        warn!("Failed to parse config at {:?}: {}. Using default.", path, e);
+                        warn!(
+                            "Failed to parse config at {:?}: {}. Using default.",
+                            path, e
+                        );
                     }
                 },
                 Err(e) => {
@@ -263,7 +268,11 @@ impl Config {
                 let _ = watcher.watch(&parent, RecursiveMode::NonRecursive);
                 while let Ok(event) = std_rx.recv() {
                     if let Ok(event) = event {
-                        if event.paths.iter().any(|p| p.file_name() == path.file_name()) {
+                        if event
+                            .paths
+                            .iter()
+                            .any(|p| p.file_name() == path.file_name())
+                        {
                             // Small delay to ensure atomic rename write is flushed
                             std::thread::sleep(std::time::Duration::from_millis(25));
                             let cfg = Config::load();

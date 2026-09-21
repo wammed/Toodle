@@ -1,9 +1,9 @@
+use super::PopupMessage;
 use chrono::{Datelike, Local, NaiveDate};
+use cosmic::Element;
 use cosmic::iced::widget::{column, container, row, text};
 use cosmic::iced::{Alignment, Border, Color, Length, Shadow};
 use cosmic::widget::button;
-use cosmic::Element;
-use super::PopupMessage;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CalendarState {
@@ -76,10 +76,7 @@ pub fn days_in_month(year: i32, month: u32) -> u32 {
         NaiveDate::from_ymd_opt(year, month + 1, 1)
     };
 
-    if let (Some(cur), Some(next)) = (
-        NaiveDate::from_ymd_opt(year, month, 1),
-        next_month_date,
-    ) {
+    if let (Some(cur), Some(next)) = (NaiveDate::from_ymd_opt(year, month, 1), next_month_date) {
         (next - cur).num_days() as u32
     } else {
         30
@@ -152,8 +149,16 @@ pub fn view_calendar<'a, Message: From<PopupMessage> + Clone + 'static>(
     let start_offset = first_day.weekday().num_days_from_sunday() as usize; // 0..=6
     let days_count = days_in_month(state.year, state.month) as usize;
 
-    let prev_month = if state.month == 1 { 12 } else { state.month - 1 };
-    let prev_year = if state.month == 1 { state.year - 1 } else { state.year };
+    let prev_month = if state.month == 1 {
+        12
+    } else {
+        state.month - 1
+    };
+    let prev_year = if state.month == 1 {
+        state.year - 1
+    } else {
+        state.year
+    };
     let prev_days_count = days_in_month(prev_year, prev_month) as usize;
 
     let mut grid_rows = column![].spacing(8);
@@ -267,7 +272,10 @@ mod tests {
 
     #[test]
     fn test_calendar_navigation() {
-        let mut state = CalendarState { year: 2026, month: 1 };
+        let mut state = CalendarState {
+            year: 2026,
+            month: 1,
+        };
         state.prev_month();
         assert_eq!(state.year, 2025);
         assert_eq!(state.month, 12);

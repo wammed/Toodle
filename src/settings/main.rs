@@ -199,8 +199,10 @@ impl Application for SettingsApp {
                 self.config.weather.latitude = lat;
                 self.config.weather.longitude = lon;
                 let _ = self.config.save();
-                self.status_message =
-                    Some(format!("Location updated to {}. Live weather updating!", name));
+                self.status_message = Some(format!(
+                    "Location updated to {}. Live weather updating!",
+                    name
+                ));
                 Task::none()
             }
 
@@ -326,14 +328,9 @@ impl Application for SettingsApp {
         .spacing(16)
         .align_y(Alignment::Center);
 
-        let main_layout = column![
-            app_title,
-            tab_bar,
-            scrollable_content,
-            bottom_actions,
-        ]
-        .spacing(16)
-        .padding(24);
+        let main_layout = column![app_title, tab_bar, scrollable_content, bottom_actions,]
+            .spacing(16)
+            .padding(24);
 
         container(main_layout)
             .width(Length::Fill)
@@ -369,11 +366,18 @@ impl SettingsApp {
 
             let row_item = row![
                 btn,
-                container(text(format!("[{}] — {}", preset.font_kind.label(), preset.description)).size(13))
-                    .style(|_| container::Style {
-                        text_color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.7)),
-                        ..Default::default()
-                    })
+                container(
+                    text(format!(
+                        "[{}] — {}",
+                        preset.font_kind.label(),
+                        preset.description
+                    ))
+                    .size(13)
+                )
+                .style(|_| container::Style {
+                    text_color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.7)),
+                    ..Default::default()
+                })
             ]
             .spacing(14)
             .align_y(Alignment::Center);
@@ -388,8 +392,8 @@ impl SettingsApp {
 
         for (idx, pal) in COLOR_PALETTE_16.iter().enumerate() {
             let is_selected = cur_color.eq_ignore_ascii_case(pal.hex);
-            let swatch_color = toodle::config::theme::parse_hex_color(pal.hex)
-                .unwrap_or(Color::WHITE);
+            let swatch_color =
+                toodle::config::theme::parse_hex_color(pal.hex).unwrap_or(Color::WHITE);
 
             let swatch = container(text(if is_selected { "✓" } else { "" }).size(14))
                 .width(Length::Fixed(36.0))
@@ -416,8 +420,7 @@ impl SettingsApp {
                     ..Default::default()
                 });
 
-            let btn = mouse_area(swatch)
-                .on_press(Message::SetColor(pal.hex.to_string()));
+            let btn = mouse_area(swatch).on_press(Message::SetColor(pal.hex.to_string()));
 
             if idx < 8 {
                 row_1 = row_1.push(btn);
@@ -429,9 +432,13 @@ impl SettingsApp {
 
         // Font scale slider
         let scale_percent = (self.config.appearance.font_scale * 100.0).round() as i32;
-        let scale_slider = slider(0.3..=10.0, self.config.appearance.font_scale, Message::SetFontScale)
-            .step(0.05_f32)
-            .width(Length::Fixed(340.0));
+        let scale_slider = slider(
+            0.3..=10.0,
+            self.config.appearance.font_scale,
+            Message::SetFontScale,
+        )
+        .step(0.05_f32)
+        .width(Length::Fixed(340.0));
 
         // Text shadow toggler
         let shadow_toggle = toggler(self.config.appearance.text_shadow)
@@ -655,9 +662,5 @@ impl SettingsApp {
 
 fn main() -> cosmic::iced::Result {
     tracing_subscriber::fmt::init();
-    cosmic::app::run::<SettingsApp>(
-        Settings::default()
-            .size(Size::new(720.0, 780.0)),
-        (),
-    )
+    cosmic::app::run::<SettingsApp>(Settings::default().size(Size::new(720.0, 780.0)), ())
 }

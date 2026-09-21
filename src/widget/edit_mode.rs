@@ -1,8 +1,8 @@
 use crate::config::{Anchor, LayoutConfig};
+use cosmic::Element;
 use cosmic::iced::widget::{column, container, row, scrollable, text};
 use cosmic::iced::{Alignment, Border, Color, Length, Shadow};
 use cosmic::widget::{button, slider};
-use cosmic::Element;
 
 #[derive(Debug, Clone)]
 pub enum EditMessage {
@@ -67,11 +67,12 @@ impl EditState {
         .spacing(8)
         .align_y(Alignment::Center);
 
-        let title = text("Edit Widget Layout")
-            .size(16);
+        let title = text("Edit Widget Layout").size(16);
 
-        let hint = text("Changes are previewed on desktop in real-time.\nPress Esc key anytime to cancel.")
-            .size(11);
+        let hint = text(
+            "Changes are previewed on desktop in real-time.\nPress Esc key anytime to cancel.",
+        )
+        .size(11);
 
         // Anchor selection buttons
         let anchor_btn = |label: &'static str, a: Anchor| {
@@ -95,11 +96,9 @@ impl EditState {
         .align_y(Alignment::Center);
 
         // Margin X slider (0 .. 3840)
-        let margin_x_slider = slider(
-            0..=3840,
-            self.layout.margin_x,
-            |val| Message::from(EditMessage::SetMarginX(val)),
-        )
+        let margin_x_slider = slider(0..=3840, self.layout.margin_x, |val| {
+            Message::from(EditMessage::SetMarginX(val))
+        })
         .width(Length::Fill);
 
         let margin_x_row = row![
@@ -112,11 +111,9 @@ impl EditState {
         .align_y(Alignment::Center);
 
         // Margin Y slider (0 .. 2160)
-        let margin_y_slider = slider(
-            0..=2160,
-            self.layout.margin_y,
-            |val| Message::from(EditMessage::SetMarginY(val)),
-        )
+        let margin_y_slider = slider(0..=2160, self.layout.margin_y, |val| {
+            Message::from(EditMessage::SetMarginY(val))
+        })
         .width(Length::Fill);
 
         let margin_y_row = row![
@@ -130,11 +127,9 @@ impl EditState {
 
         // Font scale slider (30% .. 1000%)
         let scale_percent = (self.font_scale * 100.0).round() as i32;
-        let scale_slider = slider(
-            30..=1000,
-            scale_percent,
-            |val| Message::from(EditMessage::SetFontScale(val as f32 / 100.0)),
-        )
+        let scale_slider = slider(30..=1000, scale_percent, |val| {
+            Message::from(EditMessage::SetFontScale(val as f32 / 100.0))
+        })
         .width(Length::Fill);
 
         let scale_row = row![
@@ -147,11 +142,9 @@ impl EditState {
         .align_y(Alignment::Center);
 
         // Width slider (160 .. 3840)
-        let width_slider = slider(
-            160..=3840,
-            self.layout.width,
-            |val| Message::from(EditMessage::SetWidth(val)),
-        )
+        let width_slider = slider(160..=3840, self.layout.width, |val| {
+            Message::from(EditMessage::SetWidth(val))
+        })
         .width(Length::Fill);
 
         let width_row = row![
@@ -164,11 +157,9 @@ impl EditState {
         .align_y(Alignment::Center);
 
         // Height slider (80 .. 2160)
-        let height_slider = slider(
-            80..=2160,
-            self.layout.height,
-            |val| Message::from(EditMessage::SetHeight(val)),
-        )
+        let height_slider = slider(80..=2160, self.layout.height, |val| {
+            Message::from(EditMessage::SetHeight(val))
+        })
         .width(Length::Fill);
 
         let height_row = row![
@@ -201,22 +192,20 @@ impl EditState {
         container(scroll)
             .width(Length::Fill)
             .height(Length::Fill)
-            .style(|_theme| {
-                container::Style {
-                    background: Some(Color::from_rgb(0.12, 0.13, 0.17).into()),
-                    border: Border {
-                        color: Color::from_rgb(0.35, 0.55, 0.90),
-                        width: 1.5,
-                        radius: 12.0.into(),
-                    },
-                    shadow: Shadow {
-                        color: Color::from_rgba(0.0, 0.0, 0.0, 0.5),
-                        offset: cosmic::iced::Vector::new(0.0, 6.0),
-                        blur_radius: 16.0,
-                    },
-                    text_color: Some(Color::WHITE),
-                    ..Default::default()
-                }
+            .style(|_theme| container::Style {
+                background: Some(Color::from_rgb(0.12, 0.13, 0.17).into()),
+                border: Border {
+                    color: Color::from_rgb(0.35, 0.55, 0.90),
+                    width: 1.5,
+                    radius: 12.0.into(),
+                },
+                shadow: Shadow {
+                    color: Color::from_rgba(0.0, 0.0, 0.0, 0.5),
+                    offset: cosmic::iced::Vector::new(0.0, 6.0),
+                    blur_radius: 16.0,
+                },
+                text_color: Some(Color::WHITE),
+                ..Default::default()
             })
             .into()
     }

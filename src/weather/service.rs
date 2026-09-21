@@ -24,7 +24,10 @@ impl WeatherService {
         }
     }
 
-    pub fn with_provider_and_cache(provider: Arc<dyn WeatherProvider>, cache_path: PathBuf) -> Self {
+    pub fn with_provider_and_cache(
+        provider: Arc<dyn WeatherProvider>,
+        cache_path: PathBuf,
+    ) -> Self {
         Self {
             provider,
             cache_path: Some(cache_path),
@@ -44,7 +47,10 @@ impl WeatherService {
         // 1. Check local persistent cache
         if let Some(cached) = WeatherCache::load_from(&cache_p) {
             if cached.is_location_match(lat, lon) && cached.is_current_valid() {
-                info!("Using fresh weather cache (< 30 minutes old) for ({}, {})", lat, lon);
+                info!(
+                    "Using fresh weather cache (< 30 minutes old) for ({}, {})",
+                    lat, lon
+                );
                 return Ok(cached.data);
             }
         }
@@ -57,11 +63,17 @@ impl WeatherService {
                 Ok(data)
             }
             Err(err) => {
-                warn!("Weather fetch failed: {}. Checking for stale cache fallback...", err);
+                warn!(
+                    "Weather fetch failed: {}. Checking for stale cache fallback...",
+                    err
+                );
                 // 3. Fallback to last available cache if available for this location (Sec 13)
                 if let Some(stale) = WeatherCache::load_from(&cache_p) {
                     if stale.is_location_match(lat, lon) {
-                        info!("Using stale weather cache as offline fallback for ({}, {})", lat, lon);
+                        info!(
+                            "Using stale weather cache as offline fallback for ({}, {})",
+                            lat, lon
+                        );
                         return Ok(stale.data);
                     }
                 }
@@ -157,7 +169,8 @@ mod tests {
 
     #[tokio::test]
     async fn test_weather_service_offline_fallback() {
-        let temp_dir = std::env::temp_dir().join(format!("toodle_test_fallback_{}", std::process::id()));
+        let temp_dir =
+            std::env::temp_dir().join(format!("toodle_test_fallback_{}", std::process::id()));
         let temp_cache = temp_dir.join("weather_cache.json");
         let _ = std::fs::remove_file(&temp_cache);
 
@@ -166,7 +179,8 @@ mod tests {
             call_count: AtomicUsize::new(0),
             should_fail: false,
         });
-        let service_success = WeatherService::with_provider_and_cache(mock_success, temp_cache.clone());
+        let service_success =
+            WeatherService::with_provider_and_cache(mock_success, temp_cache.clone());
         let _ = service_success.get_weather(35.68, 139.69).await.unwrap();
 
         // Now test with failing provider: should fall back to cached data

@@ -122,18 +122,31 @@ pub const THEME_PRESETS: &[ThemePreset] = &[
 ];
 
 pub fn get_theme_preset(name: &str) -> Option<&'static ThemePreset> {
-    THEME_PRESETS.iter().find(|p| p.name.eq_ignore_ascii_case(name))
+    THEME_PRESETS
+        .iter()
+        .find(|p| p.name.eq_ignore_ascii_case(name))
 }
 
 pub fn get_font_pair_for_theme(theme_name: &str) -> (cosmic::iced::Font, cosmic::iced::Font) {
     if let Some(preset) = get_theme_preset(theme_name) {
         preset.font_kind.fonts()
-    } else if theme_name.to_lowercase().contains("mono") || theme_name.to_lowercase().contains("digital") {
-        (crate::clock::fonts::FONT_MONO_BOLD, crate::clock::fonts::FONT_MONO_REGULAR)
+    } else if theme_name.to_lowercase().contains("mono")
+        || theme_name.to_lowercase().contains("digital")
+    {
+        (
+            crate::clock::fonts::FONT_MONO_BOLD,
+            crate::clock::fonts::FONT_MONO_REGULAR,
+        )
     } else if theme_name.to_lowercase().contains("serif") {
-        (crate::clock::fonts::FONT_SERIF_BOLD, crate::clock::fonts::FONT_SERIF_REGULAR)
+        (
+            crate::clock::fonts::FONT_SERIF_BOLD,
+            crate::clock::fonts::FONT_SERIF_REGULAR,
+        )
     } else {
-        (crate::clock::fonts::FONT_ROBOTO_BOLD, crate::clock::fonts::FONT_ROBOTO_REGULAR)
+        (
+            crate::clock::fonts::FONT_ROBOTO_BOLD,
+            crate::clock::fonts::FONT_ROBOTO_REGULAR,
+        )
     }
 }
 
@@ -143,22 +156,70 @@ pub struct PaletteColor {
 }
 
 pub const COLOR_PALETTE_16: &[PaletteColor] = &[
-    PaletteColor { name: "Pure White", hex: "#FFFFFF" },
-    PaletteColor { name: "Soft Silver", hex: "#E2E8F0" },
-    PaletteColor { name: "Cool Slate", hex: "#94A3B8" },
-    PaletteColor { name: "Sky Blue", hex: "#38BDF8" },
-    PaletteColor { name: "COSMIC Blue", hex: "#3B82F6" },
-    PaletteColor { name: "Indigo", hex: "#6366F1" },
-    PaletteColor { name: "Purple", hex: "#8B5CF6" },
-    PaletteColor { name: "Rose Pink", hex: "#EC4899" },
-    PaletteColor { name: "Crimson", hex: "#F43F5E" },
-    PaletteColor { name: "Coral Red", hex: "#EF4444" },
-    PaletteColor { name: "Orange", hex: "#F97316" },
-    PaletteColor { name: "Amber Gold", hex: "#F59E0B" },
-    PaletteColor { name: "Sun Yellow", hex: "#EAB308" },
-    PaletteColor { name: "Lime", hex: "#84CC16" },
-    PaletteColor { name: "Emerald Green", hex: "#10B981" },
-    PaletteColor { name: "Teal Cyan", hex: "#06B6D4" },
+    PaletteColor {
+        name: "Pure White",
+        hex: "#FFFFFF",
+    },
+    PaletteColor {
+        name: "Soft Silver",
+        hex: "#E2E8F0",
+    },
+    PaletteColor {
+        name: "Cool Slate",
+        hex: "#94A3B8",
+    },
+    PaletteColor {
+        name: "Sky Blue",
+        hex: "#38BDF8",
+    },
+    PaletteColor {
+        name: "COSMIC Blue",
+        hex: "#3B82F6",
+    },
+    PaletteColor {
+        name: "Indigo",
+        hex: "#6366F1",
+    },
+    PaletteColor {
+        name: "Purple",
+        hex: "#8B5CF6",
+    },
+    PaletteColor {
+        name: "Rose Pink",
+        hex: "#EC4899",
+    },
+    PaletteColor {
+        name: "Crimson",
+        hex: "#F43F5E",
+    },
+    PaletteColor {
+        name: "Coral Red",
+        hex: "#EF4444",
+    },
+    PaletteColor {
+        name: "Orange",
+        hex: "#F97316",
+    },
+    PaletteColor {
+        name: "Amber Gold",
+        hex: "#F59E0B",
+    },
+    PaletteColor {
+        name: "Sun Yellow",
+        hex: "#EAB308",
+    },
+    PaletteColor {
+        name: "Lime",
+        hex: "#84CC16",
+    },
+    PaletteColor {
+        name: "Emerald Green",
+        hex: "#10B981",
+    },
+    PaletteColor {
+        name: "Teal Cyan",
+        hex: "#06B6D4",
+    },
 ];
 
 pub fn parse_hex_color(hex: &str) -> Option<Color> {

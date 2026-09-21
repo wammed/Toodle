@@ -277,6 +277,17 @@ Examples, subject to maintainer confirmation:
 These values should only be added upstream after the maintainers confirm that
 they accurately describe the intended licensing of those packages.
 
+## Embedded Third-Party Assets
+
+### Weather Icons
+
+- Component: Weather Icons font
+- Author: Erik Flowers
+- License: SIL Open Font License 1.1
+- Usage: Weather condition icons
+- Location: resources/fonts/WeatherIcons.ttf
+- License text: WEATHER_ICONS_LICENSE.txt
+
 ## Scope
 
 This file records the dependency license investigation performed for Toodle

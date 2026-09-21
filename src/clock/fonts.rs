@@ -3,12 +3,18 @@ use std::borrow::Cow;
 
 pub const ROBOTO_REGULAR_BYTES: &[u8] = include_bytes!("../../resources/fonts/Roboto-Regular.ttf");
 pub const ROBOTO_BOLD_BYTES: &[u8] = include_bytes!("../../resources/fonts/Roboto-Bold.ttf");
-pub const JETBRAINS_REGULAR_BYTES: &[u8] = include_bytes!("../../resources/fonts/JetBrainsMono-Regular.ttf");
-pub const JETBRAINS_BOLD_BYTES: &[u8] = include_bytes!("../../resources/fonts/JetBrainsMono-Bold.ttf");
-pub const DEJAVUSERIF_REGULAR_BYTES: &[u8] = include_bytes!("../../resources/fonts/DejaVuSerif-Regular.ttf");
-pub const DEJAVUSERIF_BOLD_BYTES: &[u8] = include_bytes!("../../resources/fonts/DejaVuSerif-Bold.ttf");
-pub const OPENSANS_REGULAR_BYTES: &[u8] = include_bytes!("../../resources/fonts/OpenSans-Regular.ttf");
+pub const JETBRAINS_REGULAR_BYTES: &[u8] =
+    include_bytes!("../../resources/fonts/JetBrainsMono-Regular.ttf");
+pub const JETBRAINS_BOLD_BYTES: &[u8] =
+    include_bytes!("../../resources/fonts/JetBrainsMono-Bold.ttf");
+pub const DEJAVUSERIF_REGULAR_BYTES: &[u8] =
+    include_bytes!("../../resources/fonts/DejaVuSerif-Regular.ttf");
+pub const DEJAVUSERIF_BOLD_BYTES: &[u8] =
+    include_bytes!("../../resources/fonts/DejaVuSerif-Bold.ttf");
+pub const OPENSANS_REGULAR_BYTES: &[u8] =
+    include_bytes!("../../resources/fonts/OpenSans-Regular.ttf");
 pub const OPENSANS_BOLD_BYTES: &[u8] = include_bytes!("../../resources/fonts/OpenSans-Bold.ttf");
+pub const WEATHER_ICONS_BYTES: &[u8] = include_bytes!("../../resources/fonts/WeatherIcons.ttf");
 
 pub const FONT_ROBOTO_REGULAR: Font = Font {
     family: Family::Name("Roboto"),
@@ -58,6 +64,12 @@ pub const FONT_OPENSANS_BOLD: Font = Font {
     ..Font::DEFAULT
 };
 
+pub const FONT_WEATHER_ICONS: Font = Font {
+    family: Family::Name("Weather Icons"),
+    weight: Weight::Normal,
+    ..Font::DEFAULT
+};
+
 /// Returns all embedded fonts to be loaded into Iced at startup
 pub fn embedded_fonts() -> Vec<Cow<'static, [u8]>> {
     vec![
@@ -69,5 +81,6 @@ pub fn embedded_fonts() -> Vec<Cow<'static, [u8]>> {
         Cow::Borrowed(DEJAVUSERIF_BOLD_BYTES),
         Cow::Borrowed(OPENSANS_REGULAR_BYTES),
         Cow::Borrowed(OPENSANS_BOLD_BYTES),
+        Cow::Borrowed(WEATHER_ICONS_BYTES),
     ]
 }

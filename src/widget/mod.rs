@@ -3,10 +3,10 @@ pub mod edit_mode;
 use crate::config::{Config, TemperatureUnit};
 use crate::weather::WeatherData;
 use chrono::Local;
-use cosmic::iced::widget::{column, container, text};
+use cosmic::Element;
+use cosmic::iced::widget::{column, container, row, text};
 use cosmic::iced::{Alignment, Border, Color, Length, Rectangle, Shadow};
 use cosmic::widget::mouse_area;
-use cosmic::Element;
 use edit_mode::EditState;
 
 #[derive(Debug, Clone)]
@@ -52,30 +52,48 @@ pub fn view_widget<'a, Message: From<WidgetMessage> + Clone + 'static>(
     let (time_font, date_font) =
         crate::config::theme::get_font_pair_for_theme(&config.appearance.theme);
 
-    let time_text = text(time_str)
-        .font(time_font)
-        .size(time_size);
+    let time_text = text(time_str).font(time_font).size(time_size);
 
-    let date_text = text(date_str)
-        .font(date_font)
-        .size(date_size);
+    let date_text = text(date_str).font(date_font).size(date_size);
 
-    let weather_str = if let Some(w) = weather {
-        let temp_str = format_temperature(w.current.temperature_celsius, config.weather.temperature_unit);
-        let emoji = crate::weather::wmo_code_to_emoji(w.current.weather_code);
-        format!("{} {}  {}", w.current.condition_text, emoji, temp_str)
+    let weather_element: Element<'a, Message> = if let Some(w) = weather {
+        let temp_str = format_temperature(
+            w.current.temperature_celsius,
+            config.weather.temperature_unit,
+        );
+        let icon = crate::weather::wmo_code_to_icon(w.current.weather_code);
+        let icon_str = icon.glyph().to_string();
+
+        let icon_text = text(icon_str)
+            .font(crate::clock::fonts::FONT_WEATHER_ICONS)
+            .size(date_size);
+
+        let moon = crate::weather::MoonPhase::from_datetime(&now);
+        let moon_text = text(moon.glyph().to_string())
+            .font(crate::clock::fonts::FONT_WEATHER_ICONS)
+            .size(date_size);
+
+        let condition_text = text(w.current.condition_text.clone())
+            .font(date_font)
+            .size(date_size);
+
+        let temp_text = text(temp_str).font(date_font).size(date_size);
+
+        row![icon_text, moon_text, condition_text, temp_text]
+            .spacing(8)
+            .align_y(Alignment::Center)
+            .into()
     } else if weather_error {
-        "Weather unavailable".to_string()
+        text("Weather unavailable")
+            .font(date_font)
+            .size(date_size)
+            .into()
     } else {
-        "...".to_string()
+        text("...").font(date_font).size(date_size).into()
     };
 
-    let weather_text = text(weather_str)
-        .font(date_font)
-        .size(date_size);
-
-    let widget_text_color = crate::config::parse_hex_color(&config.appearance.color)
-        .unwrap_or(Color::WHITE);
+    let widget_text_color =
+        crate::config::parse_hex_color(&config.appearance.color).unwrap_or(Color::WHITE);
 
     let text_shadow = if config.appearance.text_shadow {
         Shadow {
@@ -87,7 +105,7 @@ pub fn view_widget<'a, Message: From<WidgetMessage> + Clone + 'static>(
         Shadow::default()
     };
 
-    let content = column![time_text, date_text, weather_text]
+    let content = column![time_text, date_text, weather_element]
         .spacing(6)
         .align_x(Alignment::Start);
 
@@ -150,10 +168,16 @@ mod tests {
         assert_eq!(format_temperature(-5.0, TemperatureUnit::Celsius), "-5°C");
 
         // 20°C -> 68°F
-        assert_eq!(format_temperature(20.0, TemperatureUnit::Fahrenheit), "68°F");
+        assert_eq!(
+            format_temperature(20.0, TemperatureUnit::Fahrenheit),
+            "68°F"
+        );
         // 0°C -> 32°F
         assert_eq!(format_temperature(0.0, TemperatureUnit::Fahrenheit), "32°F");
         // 100°C -> 212°F
-        assert_eq!(format_temperature(100.0, TemperatureUnit::Fahrenheit), "212°F");
+        assert_eq!(
+            format_temperature(100.0, TemperatureUnit::Fahrenheit),
+            "212°F"
+        );
     }
 }

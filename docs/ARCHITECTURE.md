@@ -189,9 +189,34 @@ pub const ROBOTO_REGULAR_BYTES: &[u8] = include_bytes!("../../resources/fonts/Ro
 pub const JETBRAINS_REGULAR_BYTES: &[u8] = include_bytes!("../../resources/fonts/JetBrainsMono-Regular.ttf");
 pub const DEJAVUSERIF_REGULAR_BYTES: &[u8] = include_bytes!("../../resources/fonts/DejaVuSerif-Regular.ttf");
 pub const OPENSANS_REGULAR_BYTES: &[u8] = include_bytes!("../../resources/fonts/OpenSans-Regular.ttf");
+pub const WEATHER_ICONS_BYTES: &[u8] = include_bytes!("../../resources/fonts/WeatherIcons.ttf");
 ```
 
-All 8 font variants are injected into `embedded_fonts()` during application startup and resolved dynamically through `crate::config::theme::get_font_pair_for_theme()`.
+All text font variants and the Weather Icons font (`resources/fonts/WeatherIcons.ttf`, SIL Open Font License 1.1) are injected into `embedded_fonts()` during application startup.
+
+### Weather Icon Pipeline
+
+Weather state representation completely avoids Unicode emoji fallback, following a dedicated abstraction pipeline:
+
+```text
+WMO weather code
+       │
+       ▼
+  WeatherIcon (semantic weather category)
+       │
+       ├────────────────► condition text (theme font)
+       │
+       ▼
+Weather Icons glyph (char)
+       │
+       ▼
+ FONT_WEATHER_ICONS (Weather Icons font)
+       │
+       ▼
+   COSMIC UI (themed foreground color)
+```
+
+Normal text (time, date, temperature, condition text) uses the theme's selected font, while the weather icon glyph is rendered exclusively via `FONT_WEATHER_ICONS` (`Weather Icons`), ensuring identical glyph display across all environments.
 
 ---
 

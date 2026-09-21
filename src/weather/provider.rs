@@ -57,6 +57,7 @@ pub fn wmo_code_to_text(code: u8) -> &'static str {
         3 => "Overcast",
         45 | 48 => "Fog",
         51 | 53 | 55 => "Drizzle",
+        56 | 57 => "Freezing Drizzle",
         61 | 63 | 65 => "Rain",
         66 | 67 => "Freezing Rain",
         71 | 73 | 75 | 77 => "Snow",
@@ -68,23 +69,8 @@ pub fn wmo_code_to_text(code: u8) -> &'static str {
     }
 }
 
-pub fn wmo_code_to_emoji(code: u8) -> &'static str {
-    match code {
-        0 => "☀️",
-        1 => "🌤️",
-        2 => "⛅",
-        3 => "☁️",
-        45 | 48 => "🌫️",
-        51 | 53 | 55 => "🌦️",
-        61 | 63 | 65 => "🌧️",
-        66 | 67 => "🌧️❄️",
-        71 | 73 | 75 | 77 => "❄️",
-        80 | 81 | 82 => "🌧️",
-        85 | 86 => "🌨️",
-        95 => "⛈️",
-        96 | 99 => "⛈️",
-        _ => "☁️",
-    }
+pub fn wmo_code_to_icon(code: u8) -> crate::weather::icon::WeatherIcon {
+    crate::weather::icon::WeatherIcon::from_wmo_code(code)
 }
 
 pub struct OpenMeteoProvider {
@@ -207,6 +193,8 @@ mod tests {
         assert_eq!(wmo_code_to_text(1), "Mainly clear");
         assert_eq!(wmo_code_to_text(2), "Partly cloudy");
         assert_eq!(wmo_code_to_text(3), "Overcast");
+        assert_eq!(wmo_code_to_text(56), "Freezing Drizzle");
+        assert_eq!(wmo_code_to_text(57), "Freezing Drizzle");
         assert_eq!(wmo_code_to_text(61), "Rain");
         assert_eq!(wmo_code_to_text(71), "Snow");
         assert_eq!(wmo_code_to_text(95), "Thunderstorm");
@@ -214,18 +202,22 @@ mod tests {
     }
 
     #[test]
-    fn test_wmo_code_to_emoji() {
-        assert_eq!(wmo_code_to_emoji(0), "☀️");
-        assert_eq!(wmo_code_to_emoji(1), "🌤️");
-        assert_eq!(wmo_code_to_emoji(2), "⛅");
-        assert_eq!(wmo_code_to_emoji(3), "☁️");
-        assert_eq!(wmo_code_to_emoji(45), "🌫️");
-        assert_eq!(wmo_code_to_emoji(53), "🌦️");
-        assert_eq!(wmo_code_to_emoji(63), "🌧️");
-        assert_eq!(wmo_code_to_emoji(71), "❄️");
-        assert_eq!(wmo_code_to_emoji(80), "🌧️");
-        assert_eq!(wmo_code_to_emoji(85), "🌨️");
-        assert_eq!(wmo_code_to_emoji(95), "⛈️");
-        assert_eq!(wmo_code_to_emoji(255), "☁️");
+    fn test_wmo_code_to_icon() {
+        use crate::weather::icon::WeatherIcon;
+        assert_eq!(wmo_code_to_icon(0), WeatherIcon::Clear);
+        assert_eq!(wmo_code_to_icon(1), WeatherIcon::PartlyCloudy);
+        assert_eq!(wmo_code_to_icon(2), WeatherIcon::PartlyCloudy);
+        assert_eq!(wmo_code_to_icon(3), WeatherIcon::Cloudy);
+        assert_eq!(wmo_code_to_icon(45), WeatherIcon::Fog);
+        assert_eq!(wmo_code_to_icon(53), WeatherIcon::Drizzle);
+        assert_eq!(wmo_code_to_icon(56), WeatherIcon::FreezingDrizzle);
+        assert_eq!(wmo_code_to_icon(57), WeatherIcon::FreezingDrizzle);
+        assert_eq!(wmo_code_to_icon(63), WeatherIcon::Rain);
+        assert_eq!(wmo_code_to_icon(66), WeatherIcon::FreezingRain);
+        assert_eq!(wmo_code_to_icon(71), WeatherIcon::Snow);
+        assert_eq!(wmo_code_to_icon(80), WeatherIcon::RainShower);
+        assert_eq!(wmo_code_to_icon(85), WeatherIcon::SnowShower);
+        assert_eq!(wmo_code_to_icon(95), WeatherIcon::Thunderstorm);
+        assert_eq!(wmo_code_to_icon(255), WeatherIcon::Cloudy);
     }
 }

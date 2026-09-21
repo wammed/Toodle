@@ -25,7 +25,7 @@
 - **2 サーフェス Edit Layout モード**: `Layer::Top` の独立 `Edit Layout Panel` と `Layer::Bottom` のウィジェット本体が連携。サーフェスの再生成を行わないインプレース更新により、チラつきゼロでリアルタイムに変形。
 - **独立設定アプリ (`toodle-settings`)**: ネイティブ XDG Toplevel ウィンドウ（720 x 780、ソリッドダーク背景）。4 タブ構成（Appearance, Layout, Weather, Display）、リアルタイム自動保存、10 テーマプリセット、16 色カラーパレット、クイック都市選択。
 - **inotify 設定ホットリロード**: `~/.config/toodle/config.toml` の変更を 25ms で高速検知し、ウィジェットへ即座に反映。
-- **バイナリ完全組み込みフォント**: Roboto Sans, JetBrains Mono, DejaVu Serif, Open Sans の 4 ファミリ（計8ファイル）を `include_bytes!` で静的組み込み。外部システムフォント非依存。
+- **バイナリ完全組み込みフォント**: Roboto Sans, JetBrains Mono, DejaVu Serif, Open Sans および Weather Icons を `include_bytes!` で静的組み込み。天気アイコンは Unicode 絵文字ではなく同梱 Weather Icons フォント（`resources/fonts/WeatherIcons.ttf`、SIL Open Font License 1.1）で描画され、外部システムフォント非依存でどの環境でも一貫した glyph を表示。
 
 ---
 
@@ -159,3 +159,4 @@ temperature_unit = "Celsius" # Celsius, Fahrenheit
 ## ライセンス
 
 本プロジェクトは [GPL-3.0-or-later](LICENSE) の下で公開されています。
+同梱の Weather Icons フォント（作者: Erik Flowers）は [SIL Open Font License 1.1](THIRD_PARTY_LICENSES/WEATHER_ICONS_LICENSE.txt) の下でライセンスされています。詳細は [THIRD_PARTY_LICENSES/README.md](THIRD_PARTY_LICENSES/README.md) を参照してください。

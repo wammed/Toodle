@@ -16,7 +16,7 @@ use std::sync::Arc;
 use toodle::config::Config;
 use toodle::popup::{self, PopupMessage};
 use toodle::weather::{
-    weather_update_stream, WeatherCache, WeatherData, WeatherError, WeatherService,
+    WeatherCache, WeatherData, WeatherError, WeatherService, weather_update_stream,
 };
 use toodle::widget::edit_mode::{EditMessage, EditState};
 use toodle::widget::{self, WidgetMessage, WidgetState};
@@ -473,7 +473,13 @@ impl Application for ToodleApp {
                             let anchor = edit_state.layout.anchor.to_layer_anchor();
                             Task::batch(vec![
                                 layer_cmd::set_anchor(self.widget_surface_id, anchor),
-                                layer_cmd::set_margin(self.widget_surface_id, top, right, bottom, left),
+                                layer_cmd::set_margin(
+                                    self.widget_surface_id,
+                                    top,
+                                    right,
+                                    bottom,
+                                    left,
+                                ),
                             ])
                         }
                         EditMessage::SetWidth(_) | EditMessage::SetHeight(_) => {
@@ -502,8 +508,10 @@ impl Application for ToodleApp {
                 }
 
                 info!("Config reloaded via file watcher from external change");
-                let location_changed = (self.config.weather.latitude - new_config.weather.latitude).abs() > 0.0001
-                    || (self.config.weather.longitude - new_config.weather.longitude).abs() > 0.0001;
+                let location_changed =
+                    (self.config.weather.latitude - new_config.weather.latitude).abs() > 0.0001
+                        || (self.config.weather.longitude - new_config.weather.longitude).abs()
+                            > 0.0001;
 
                 self.config = new_config;
 
@@ -527,7 +535,13 @@ impl Application for ToodleApp {
                         self.widget_surface_id,
                         self.config.layout.anchor.to_layer_anchor(),
                     ));
-                    tasks.push(layer_cmd::set_margin(self.widget_surface_id, top, right, bottom, left));
+                    tasks.push(layer_cmd::set_margin(
+                        self.widget_surface_id,
+                        top,
+                        right,
+                        bottom,
+                        left,
+                    ));
                     tasks.push(layer_cmd::set_size(
                         self.widget_surface_id,
                         Some(self.config.layout.width),
@@ -545,11 +559,11 @@ impl Application for ToodleApp {
     }
 
     fn subscription(&self) -> Subscription<Self::Message> {
-        let tick = cosmic::iced::Subscription::run(toodle::clock::next_second_tick)
-            .map(|_| Message::Tick);
+        let tick =
+            cosmic::iced::Subscription::run(toodle::clock::next_second_tick).map(|_| Message::Tick);
         let watcher = cosmic::iced::Subscription::run(Config::watch).map(Message::ConfigReloaded);
-        let weather_sub = cosmic::iced::Subscription::run(weather_update_stream)
-            .map(|_| Message::FetchWeather);
+        let weather_sub =
+            cosmic::iced::Subscription::run(weather_update_stream).map(|_| Message::FetchWeather);
 
         // Filter events strictly to avoid flooding the message queue with cursor movements!
         let escape_key = cosmic::iced::event::listen_with(|event, _status, _id| {
