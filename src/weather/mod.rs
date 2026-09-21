@@ -5,6 +5,7 @@ pub mod provider;
 pub mod service;
 
 pub use cache::{CachedWeather, WeatherCache};
+#[allow(deprecated)]
 pub use icon::{WeatherIcon, weather_icon_glyph};
 pub use moon::MoonPhase;
 pub use provider::{

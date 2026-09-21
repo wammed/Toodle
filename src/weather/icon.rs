@@ -35,13 +35,48 @@ impl WeatherIcon {
         }
     }
 
+    /// Returns the static embedded Meteocons color SVG bytes for this weather condition.
+    pub fn svg_bytes(self) -> &'static [u8] {
+        match self {
+            Self::Clear => include_bytes!("../../resources/icons/meteocons/clear.svg"),
+            Self::PartlyCloudy => {
+                include_bytes!("../../resources/icons/meteocons/partly-cloudy.svg")
+            }
+            Self::Cloudy => include_bytes!("../../resources/icons/meteocons/cloudy.svg"),
+            Self::Fog => include_bytes!("../../resources/icons/meteocons/fog.svg"),
+            Self::Drizzle => include_bytes!("../../resources/icons/meteocons/drizzle.svg"),
+            Self::FreezingDrizzle => {
+                include_bytes!("../../resources/icons/meteocons/freezing-drizzle.svg")
+            }
+            Self::Rain => include_bytes!("../../resources/icons/meteocons/rain.svg"),
+            Self::FreezingRain => {
+                include_bytes!("../../resources/icons/meteocons/freezing-rain.svg")
+            }
+            Self::Snow => include_bytes!("../../resources/icons/meteocons/snow.svg"),
+            Self::SnowShower => include_bytes!("../../resources/icons/meteocons/snow-shower.svg"),
+            Self::RainShower => include_bytes!("../../resources/icons/meteocons/rain-shower.svg"),
+            Self::Thunderstorm => {
+                include_bytes!("../../resources/icons/meteocons/thunderstorm.svg")
+            }
+        }
+    }
+
     /// Converts the semantic weather icon into a Weather Icons font glyph character.
+    #[deprecated(
+        since = "0.2.0",
+        note = "Weather Icons font has been replaced with Meteocons color SVG; use svg_bytes() instead"
+    )]
     pub fn glyph(self) -> char {
+        #[allow(deprecated)]
         weather_icon_glyph(self)
     }
 }
 
 /// Maps a semantic `WeatherIcon` to its corresponding Weather Icons font glyph codepoint.
+#[deprecated(
+    since = "0.2.0",
+    note = "Weather Icons font has been replaced with Meteocons color SVG; use WeatherIcon::svg_bytes() instead"
+)]
 pub fn weather_icon_glyph(icon: WeatherIcon) -> char {
     match icon {
         WeatherIcon::Clear => '\u{f00d}',           // wi-day-sunny
@@ -111,6 +146,7 @@ mod tests {
     }
 
     #[test]
+    #[allow(deprecated)]
     fn test_weather_icon_to_glyph_mapping() {
         let all_icons = [
             (WeatherIcon::Clear, '\u{f00d}'),
@@ -135,6 +171,35 @@ mod tests {
             assert!(
                 (0xf000..=0xf2ff).contains(&cp),
                 "Glyph {expected_glyph:?} (0x{cp:x}) is outside expected PUA range"
+            );
+        }
+    }
+
+    #[test]
+    fn test_weather_icon_svg_bytes() {
+        let all_icons = [
+            WeatherIcon::Clear,
+            WeatherIcon::PartlyCloudy,
+            WeatherIcon::Cloudy,
+            WeatherIcon::Fog,
+            WeatherIcon::Drizzle,
+            WeatherIcon::FreezingDrizzle,
+            WeatherIcon::Rain,
+            WeatherIcon::FreezingRain,
+            WeatherIcon::Snow,
+            WeatherIcon::SnowShower,
+            WeatherIcon::RainShower,
+            WeatherIcon::Thunderstorm,
+        ];
+
+        for icon in all_icons {
+            let bytes = icon.svg_bytes();
+            assert!(!bytes.is_empty(), "SVG bytes for {icon:?} must not be empty");
+            let svg_str = std::str::from_utf8(bytes)
+                .unwrap_or_else(|_| panic!("SVG bytes for {icon:?} must be valid UTF-8"));
+            assert!(
+                svg_str.contains("<svg") && svg_str.contains("</svg>"),
+                "SVG content for {icon:?} must contain valid <svg> root element"
             );
         }
     }

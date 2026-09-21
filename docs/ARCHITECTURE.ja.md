@@ -186,7 +186,7 @@ pub fn is_location_match(&self, lat: f64, lon: f64) -> bool {
 
 ## 6. バイナリ組み込みタイポグラフィ
 
-外部システムフォントの有無によって文字のメトリクスが崩れることを防ぐため（設計書第11項）、Roboto、JetBrains Mono、DejaVu Serif、Open Sans のテキストフォントに加え、天気アイコン表示専用の Weather Icons フォント（`resources/fonts/WeatherIcons.ttf`、SIL Open Font License 1.1）を `include_bytes!` でバイナリ内へ静的組み込みしています。どの Linux ディストリビューションでも完全に同一の美しいフォントとアイコンで描画されます。
+外部システムフォントの有無によって文字のメトリクスが崩れることを防ぐため（設計書第11項）、Roboto、JetBrains Mono、DejaVu Serif、Open Sans のテキストフォントを `include_bytes!` でバイナリ内へ静的組み込みしています。また、天気アイコン表示には同梱 Bas Milius Meteocons カラー SVG アセット（`resources/icons/meteocons/`、MIT License）を採用しています。どの Linux ディストリビューションでも完全に同一の美しいフォントとモダンなアイコンで描画されます。
 
 ### 天気アイコン描画パイプライン
 
@@ -201,16 +201,16 @@ WMO weather code
        ├────────────────► condition text（テーマ通常フォント）
        │
        ▼
-Weather Icons glyph（char）
+   svg_bytes()（&'static [u8]）
        │
        ▼
- FONT_WEATHER_ICONS（Weather Icons font）
+cosmic::iced::widget::svg（resvg ベクターレンダラ）
        │
        ▼
-   COSMIC UI（テーマの前景色を適用）
+    COSMIC UI（サイズステージに完全連動する鮮やかなカラーSVG）
 ```
 
-通常文字（時刻、日付、気温、状態テキスト）はユーザー選択のテーマフォントを使用し、天気アイコンのみが独立して常に `FONT_WEATHER_ICONS` で描画されます。
+通常文字（時刻、日付、気温、状態テキスト）はユーザー選択のテーマフォントを使用し、天気アイコンは組み込み Meteocons カラー SVG ウィジェットによって独立して鮮やかに描画されます。
 
 ---
 

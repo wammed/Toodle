@@ -4,7 +4,7 @@ use crate::config::{Config, TemperatureUnit};
 use crate::weather::WeatherData;
 use chrono::Local;
 use cosmic::Element;
-use cosmic::iced::widget::{column, container, row, text};
+use cosmic::iced::widget::{column, container, row, svg, text};
 use cosmic::iced::{Alignment, Border, Color, Length, Rectangle};
 use cosmic::widget::mouse_area;
 use edit_mode::EditState;
@@ -85,16 +85,10 @@ pub fn view_widget<'a, Message: From<WidgetMessage> + Clone + 'static>(
             config.weather.temperature_unit,
         );
         let icon = crate::weather::wmo_code_to_icon(w.current.weather_code);
-        let icon_str = icon.glyph().to_string();
-
-        let icon_text = text(icon_str)
-            .font(crate::clock::fonts::FONT_WEATHER_ICONS)
-            .size(date_size);
-
-        let moon = crate::weather::MoonPhase::from_datetime(&now);
-        let moon_text = text(moon.glyph().to_string())
-            .font(crate::clock::fonts::FONT_WEATHER_ICONS)
-            .size(date_size);
+        let icon_size = (date_size as f32 * 1.2).round();
+        let icon_svg = svg(svg::Handle::from_memory(icon.svg_bytes()))
+            .width(icon_size)
+            .height(icon_size);
 
         let condition_text = text(w.current.condition_text.clone())
             .font(date_font)
@@ -102,14 +96,9 @@ pub fn view_widget<'a, Message: From<WidgetMessage> + Clone + 'static>(
 
         let temp_text = text(temp_str).font(date_font).size(date_size);
 
-        let icon_spacing = (spacing / 2).max(4);
         let item_spacing = (spacing * 2).max(12);
 
-        let icons_row = row![icon_text, moon_text]
-            .spacing(icon_spacing)
-            .align_y(Alignment::Center);
-
-        row![icons_row, condition_text, temp_text]
+        row![icon_svg, condition_text, temp_text]
             .spacing(item_spacing)
             .align_y(Alignment::Center)
             .into()

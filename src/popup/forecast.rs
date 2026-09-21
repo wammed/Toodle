@@ -4,7 +4,7 @@ use crate::weather::WeatherData;
 use crate::widget::format_temperature;
 use chrono::{Local, NaiveDate};
 use cosmic::Element;
-use cosmic::iced::widget::{column, container, row, text};
+use cosmic::iced::widget::{column, container, row, svg, text};
 use cosmic::iced::{Alignment, Border, Color, Length, Shadow};
 use cosmic::widget::button;
 
@@ -77,17 +77,11 @@ pub fn view_forecast<'a, Message: From<PopupMessage> + Clone + 'static>(
                     });
 
                 let icon = crate::weather::wmo_code_to_icon(day.weather_code);
-                let icon_text = text(icon.glyph().to_string())
-                    .font(crate::clock::fonts::FONT_WEATHER_ICONS)
-                    .size(16);
-                let moon_glyph = crate::weather::MoonPhase::from_ymd_str(&day.date)
-                    .map(|m| m.glyph().to_string())
-                    .unwrap_or_default();
-                let moon_text = text(moon_glyph)
-                    .font(crate::clock::fonts::FONT_WEATHER_ICONS)
-                    .size(16);
+                let icon_svg = svg(svg::Handle::from_memory(icon.svg_bytes()))
+                    .width(20.0)
+                    .height(20.0);
                 let condition_text = text(day.condition_text.clone()).size(14);
-                let condition_row = row![icon_text, moon_text, condition_text]
+                let condition_row = row![icon_svg, condition_text]
                     .spacing(8)
                     .align_y(Alignment::Center);
                 let condition_box = container(condition_row)

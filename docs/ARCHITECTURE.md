@@ -204,10 +204,9 @@ pub const ROBOTO_REGULAR_BYTES: &[u8] = include_bytes!("../../resources/fonts/Ro
 pub const JETBRAINS_REGULAR_BYTES: &[u8] = include_bytes!("../../resources/fonts/JetBrainsMono-Regular.ttf");
 pub const DEJAVUSERIF_REGULAR_BYTES: &[u8] = include_bytes!("../../resources/fonts/DejaVuSerif-Regular.ttf");
 pub const OPENSANS_REGULAR_BYTES: &[u8] = include_bytes!("../../resources/fonts/OpenSans-Regular.ttf");
-pub const WEATHER_ICONS_BYTES: &[u8] = include_bytes!("../../resources/fonts/WeatherIcons.ttf");
 ```
 
-All text font variants and the Weather Icons font (`resources/fonts/WeatherIcons.ttf`, SIL Open Font License 1.1) are injected into `embedded_fonts()` during application startup.
+All text font variants are injected into `embedded_fonts()` during application startup. Weather condition icons are rendered via embedded Bas Milius Meteocons color SVG assets (`resources/icons/meteocons/`, MIT License).
 
 ### Weather Icon Pipeline
 
@@ -222,16 +221,16 @@ WMO weather code
        ├────────────────► condition text (theme font)
        │
        ▼
-Weather Icons glyph (char)
+   svg_bytes() (&'static [u8])
        │
        ▼
- FONT_WEATHER_ICONS (Weather Icons font)
+cosmic::iced::widget::svg (resvg vector renderer)
        │
        ▼
-   COSMIC UI (themed foreground color)
+   COSMIC UI (vibrant color SVG scaled to layout stage)
 ```
 
-Normal text (time, date, temperature, condition text) uses the theme's selected font, while the weather icon glyph is rendered exclusively via `FONT_WEATHER_ICONS` (`Weather Icons`), ensuring identical glyph display across all environments.
+Normal text (time, date, temperature, condition text) uses the theme's selected font, while the weather icon is rendered via `svg` using embedded Meteocons color SVGs, ensuring identical, vibrant display across all environments and size stages.
 
 ---
 
