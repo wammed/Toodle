@@ -42,8 +42,16 @@
 git clone https://github.com/wammed/Toodle.git
 cd Toodle
 
-# ウィジェット本体および設定アプリのビルド
+# ウィジェット本体および設定アプリのビルド (ビルドのみ、$HOME/.local/bin へのインストールは行われません)
 cargo build --release
+```
+
+### ローカルインストール
+
+リリースバイナリ（`toodle`, `toodle-settings`）を `$HOME/.local/bin` にインストールする場合：
+
+```bash
+./tools/install-local.sh
 ```
 
 ### 起動
@@ -51,9 +59,13 @@ cargo build --release
 ```bash
 # クロックウィジェット本体の起動 (デスクトップ背景 Layer::Bottom で常駐)
 ./target/release/toodle &
+# またはインストール済みの場合:
+# toodle &
 
 # 設定アプリケーションの起動
 ./target/release/toodle-settings
+# またはインストール済みの場合:
+# toodle-settings
 ```
 
 ---

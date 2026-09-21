@@ -210,14 +210,19 @@ cargo test
 # 天気モジュール単体テスト (キャッシュ検証、座標一致、オフラインフォールバック)
 cargo test --lib weather
 
-# リリースビルドの生成
+# リリースビルドの生成 (ビルドのみ、$HOME/.local/bin への自動インストールは行われません)
 cargo build --release
+
+# ローカルインストール ($HOME/.local/bin へのビルド＆配置)
+./tools/install-local.sh
 
 # デスクトップクロックウィジェット本体の起動
 ./target/debug/toodle
+# またはインストール済みバイナリ: ~/.local/bin/toodle
 
 # 設定アプリケーションの起動
 ./target/debug/toodle-settings
+# またはインストール済みバイナリ: ~/.local/bin/toodle-settings
 ```
 
 ---

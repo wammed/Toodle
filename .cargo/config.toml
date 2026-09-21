@@ -1,2 +1,0 @@
-[build]
-rustc-wrapper = "tools/post-build-copy.sh"

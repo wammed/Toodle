@@ -42,8 +42,16 @@
 git clone https://github.com/wammed/Toodle.git
 cd Toodle
 
-# Build both toodle widget and toodle-settings
+# Build both toodle widget and toodle-settings (builds only, does not install)
 cargo build --release
+```
+
+### Local Installation
+
+To install the release binaries (`toodle` and `toodle-settings`) to `$HOME/.local/bin`:
+
+```bash
+./tools/install-local.sh
 ```
 
 ### Running
@@ -51,9 +59,13 @@ cargo build --release
 ```bash
 # Launch the desktop clock widget (runs on desktop background Layer::Bottom)
 ./target/release/toodle &
+# or from $HOME/.local/bin if installed:
+# toodle &
 
 # Launch the settings application
 ./target/release/toodle-settings
+# or from $HOME/.local/bin if installed:
+# toodle-settings
 ```
 
 ---

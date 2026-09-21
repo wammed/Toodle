@@ -79,8 +79,15 @@ pub fn view_widget<'a, Message: From<WidgetMessage> + Clone + 'static>(
 
         let temp_text = text(temp_str).font(date_font).size(date_size);
 
-        row![icon_text, moon_text, condition_text, temp_text]
-            .spacing(8)
+        let icon_spacing = (6.0 * font_scale).round().max(4.0) as u16;
+        let item_spacing = (16.0 * font_scale).round().max(12.0) as u16;
+
+        let icons_row = row![icon_text, moon_text]
+            .spacing(icon_spacing)
+            .align_y(Alignment::Center);
+
+        row![icons_row, condition_text, temp_text]
+            .spacing(item_spacing)
             .align_y(Alignment::Center)
             .into()
     } else if weather_error {
