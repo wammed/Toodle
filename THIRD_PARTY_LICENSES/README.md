@@ -288,6 +288,43 @@ they accurately describe the intended licensing of those packages.
 - Location: resources/icons/meteocons/
 - License text: METEOCONS_LICENSE.txt
 
+### DejaVu Serif
+
+- Component: DejaVu Serif (`DejaVuSerif-Regular.ttf`, `DejaVuSerif-Bold.ttf`)
+- Author: DejaVu fonts team, Bitstream Inc.
+- License: Bitstream Vera Fonts License / DejaVu License
+- Usage: Clock / widget serif typography
+- Location: resources/fonts/
+- License text: DEJAVU_LICENSE.txt
+
+### JetBrains Mono NL
+
+- Component: JetBrains Mono NL (`JetBrainsMono-Regular.ttf`, `JetBrainsMono-Bold.ttf`)
+- Author: JetBrains s.r.o., Philipp Nurullin, Konstantin Bulenkov
+- License: SIL Open Font License 1.1 (OFL-1.1)
+- Usage: Clock / widget monospace typography
+- Location: resources/fonts/
+- License text: JETBRAINS_MONO_NL_OFL.txt
+
+### Open Sans
+
+- Component: Open Sans (`OpenSans-Regular.ttf`, `OpenSans-Bold.ttf`)
+- Author: Steve Matteson, Monotype Design Team
+- License: SIL Open Font License 1.1 (OFL-1.1)
+- Usage: Clock / widget sans-serif typography
+- Location: resources/fonts/
+- License text: OPEN_SANS_OFL.txt
+
+### Roboto
+
+- Component: Roboto (`Roboto-Regular.ttf`, `Roboto-Bold.ttf`)
+- Author: Christian Robertson, Google LLC
+- License: SIL Open Font License 1.1 (OFL-1.1)
+- Usage: Clock / widget default typography
+- Location: resources/fonts/
+- License text: ROBOTO_OFL.txt
+
+
 ## Scope
 
 This file records the dependency license investigation performed for Toodle

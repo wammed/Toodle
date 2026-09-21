@@ -181,4 +181,5 @@ Toodle is developed using AI-assisted Vibe Coding. AI is actively used for archi
 ## License
 
 This project is licensed under the [GPL-3.0-or-later](LICENSE) license.
-The embedded Meteocons color SVG icons by Bas Milius are licensed under the [MIT License](THIRD_PARTY_LICENSES/METEOCONS_LICENSE.txt). See [THIRD_PARTY_LICENSES/README.md](THIRD_PARTY_LICENSES/README.md) for details.
+The embedded Meteocons color SVG icons by Bas Milius are licensed under the [MIT License](THIRD_PARTY_LICENSES/METEOCONS_LICENSE.txt).
+All bundled fonts retain their respective licenses. See [THIRD_PARTY_LICENSES/README.md](THIRD_PARTY_LICENSES/README.md) for details.

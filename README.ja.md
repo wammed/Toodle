@@ -181,4 +181,5 @@ Toodle は、AIを活用した **Vibe Coding** によって開発されていま
 ## ライセンス
 
 本プロジェクトは [GPL-3.0-or-later](LICENSE) の下で公開されています。
-同梱の Meteocons カラー SVG アイコン（作者: Bas Milius）は [MIT License](THIRD_PARTY_LICENSES/METEOCONS_LICENSE.txt) の下でライセンスされています。詳細は [THIRD_PARTY_LICENSES/README.md](THIRD_PARTY_LICENSES/README.md) を参照してください。
+同梱の Meteocons カラー SVG アイコン（作者: Bas Milius）は [MIT License](THIRD_PARTY_LICENSES/METEOCONS_LICENSE.txt) の下でライセンスされています。
+同梱フォントは各フォント独自のライセンスが適用されます（bundled fonts retain their respective licenses）。詳細は [THIRD_PARTY_LICENSES/README.md](THIRD_PARTY_LICENSES/README.md) を参照してください。
