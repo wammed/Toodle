@@ -63,10 +63,13 @@ Wayland desktop widgets with transparent window areas can inadvertently intercep
 - **Normal Mode**:
   Calculates `content_bounds()` representing the active widget layout bounding box:
   ```rust
-  let padding = 12.0;
-  let estimated_w = (180.0 * config.appearance.font_scale + padding * 2.0).min(config.layout.width as f32);
-  let estimated_h = (90.0 * config.appearance.font_scale + padding * 2.0).min(config.layout.height as f32);
-  Rectangle { x: 0.0, y: 0.0, width: estimated_w, height: estimated_h }
+  let info = crate::config::get_size_stage(config.layout.size_stage);
+  vec![Rectangle {
+      x: 0.0,
+      y: 0.0,
+      width: info.width as f32,
+      height: info.height as f32,
+  }]
   ```
   Transparent margins outside the active widget layout are excluded from the input region, allowing desktop clicks to pass through freely.
   *(Note: Per v0.3 design Section 8, non-rectangular glyph-level hit masks are not required; rectangular `content_bounds()` is the official specification).*
@@ -81,7 +84,7 @@ tasks.push(layer_cmd::set_margin(surface_id, top, right, bottom, left));
 tasks.push(layer_cmd::set_size(surface_id, Some(width), Some(height)));
 tasks.push(layer_cmd::set_input_zone(surface_id, Some(bounds)));
 ```
-This guarantees instantaneous 0ms visual updates with zero compositor redraw flicker during live slider dragging, settings reload, or mode transitions.
+This guarantees instantaneous 0ms visual updates with zero compositor redraw flicker during discrete layout or size stage selection, settings reload, or mode transitions.
 
 ### 2.4 Edit Layout Architecture (Two-Surface Model, Design Doc Sec 7)
 Rather than morphing the main widget into an editing interface, Toodle separates presentation from interaction:
@@ -240,6 +243,7 @@ The following areas are explicitly documented as known gaps between the v0.3 des
 3. **HTTP Exponential Backoff**: Automatic retry backoff for HTTP 429/5xx is not yet implemented.
 4. **Geocoding**: City presets and manual coordinates are supported; automatic name-to-coordinate lookup is planned for Phase 5.
 5. **Popup Dismissal**: Outside-click and focus-loss dismiss behavior are awaiting compositor event verification and formalization.
+6. **Multi-Monitor Verification**: Single-display geometry across standard resolutions (from 640×360 up to WQHD 2560×1440 and 4K 3840×2160) is verified through comprehensive automated geometry unit testing. Multi-monitor environments—specifically mixed-resolution and multi-DPI multi-monitor configurations—have not been sufficiently verified on physical hardware and remain an unverified item until dedicated physical test setups are available.
 
 ---
 

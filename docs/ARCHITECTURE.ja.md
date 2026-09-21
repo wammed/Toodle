@@ -63,10 +63,13 @@ Wayland デスクトップウィジェットで頻発する問題が「透明な
 - **Normal モード**:
   ウィジェット描画領域の矩形バウンディングボックス `content_bounds()` を設定します：
   ```rust
-  let padding = 12.0;
-  let estimated_w = (180.0 * config.appearance.font_scale + padding * 2.0).min(config.layout.width as f32);
-  let estimated_h = (90.0 * config.appearance.font_scale + padding * 2.0).min(config.layout.height as f32);
-  Rectangle { x: 0.0, y: 0.0, width: estimated_w, height: estimated_h }
+  let info = crate::config::get_size_stage(config.layout.size_stage);
+  vec![Rectangle {
+      x: 0.0,
+      y: 0.0,
+      width: info.width as f32,
+      height: info.height as f32,
+  }]
   ```
   ウィジェット外側の透明マージン部分は入力領域から除外され、下の壁紙やデスクトップアイコンへクリックが素通し（パススルー）されます。
   *(※注: v0.3 設計書第8項に基づき、文字の輪郭に沿った非矩形ヒットマスクは要求せず、`content_bounds()` の矩形入力領域を正式仕様とします)。*
@@ -81,7 +84,7 @@ tasks.push(layer_cmd::set_margin(surface_id, top, right, bottom, left));
 tasks.push(layer_cmd::set_size(surface_id, Some(width), Some(height)));
 tasks.push(layer_cmd::set_input_zone(surface_id, Some(bounds)));
 ```
-これにより、スライダー操作やモード遷移の際も 0ms で滑らかにサイズやマージンが更新されます。
+これにより、有限状態のグリッド配置・サイズステージ選択やモード遷移の際も 0ms で滑らかにサイズやマージンが更新されます。
 
 ### 2.4 Edit Layout アーキテクチャ (2 サーフェス方式 / 設計書第7項)
 ウィジェット本体のサーフェスを編集用 UI に変形させるのではなく、表示と操作を分離した 2 サーフェス方式を採用しています：
@@ -219,6 +222,7 @@ Weather Icons glyph（char）
 3. **HTTP 指数バックオフ**: 429 / 5xx エラー時の指数バックオフリトライは未実装です。
 4. **Geocoding 自動解決**: 都市プリセットおよび手動座標入力のみ対応しており、都市名からの自動解決は Phase 5 で対応予定です。
 5. **Popup Dismissal**: 領域外クリックやフォーカス喪失時の自動閉鎖は、実機検証と仕様確定を経て実装予定です。
+6. **マルチモニター環境の検証**: 単一ディスプレイにおける各解像度（640×360 から WQHD 2560×1440、4K 3840×2160 まで）のジオメトリ計算は自動単体テストにより検証済みですが、異なる解像度やスケーリングが混在する複数ディスプレイ（マルチモニター）環境については実機での十分な動作検証が行えておらず、現時点では未検証事項となります。実機テスト環境が整い次第、追加検証を行います。
 
 ---
 

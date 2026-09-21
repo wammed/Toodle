@@ -43,6 +43,7 @@ impl Default for DisplayConfig {
     }
 }
 
+/// Legacy 4-corner anchor (retained for legacy config migration compatibility only)
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 pub enum Anchor {
     TopLeft,
@@ -156,69 +157,210 @@ pub fn get_size_stage(stage: u8) -> SizeStageInfo {
     SIZE_STAGES[idx]
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+/// Official finite-state layout configuration model.
+/// Layout is fully defined by 9 screen zones and 10 discrete size stages.
+#[derive(Debug, Clone, Serialize, PartialEq, Eq)]
 pub struct LayoutConfig {
-    #[serde(default)]
     pub grid_position: GridPosition,
-    #[serde(default = "default_size_stage")]
     pub size_stage: u8,
-
-    // Legacy fields preserved for backward compatibility
-    #[serde(default)]
-    pub anchor: Anchor,
-    #[serde(default = "default_margin_x")]
-    pub margin_x: i32,
-    #[serde(default = "default_margin_y")]
-    pub margin_y: i32,
-    #[serde(default = "default_width")]
-    pub width: u32,
-    #[serde(default = "default_height")]
-    pub height: u32,
 }
 
-fn default_size_stage() -> u8 {
+pub fn default_size_stage() -> u8 {
     2
-}
-
-fn default_margin_x() -> i32 {
-    40
-}
-fn default_margin_y() -> i32 {
-    60
-}
-fn default_width() -> u32 {
-    480
-}
-fn default_height() -> u32 {
-    270
 }
 
 impl Default for LayoutConfig {
     fn default() -> Self {
-        let stage_info = get_size_stage(default_size_stage());
         Self {
             grid_position: GridPosition::default(),
             size_stage: default_size_stage(),
-            anchor: Anchor::default(),
-            margin_x: default_margin_x(),
-            margin_y: default_margin_y(),
-            width: stage_info.width,
-            height: stage_info.height,
         }
     }
 }
 
-impl LayoutConfig {
-    /// Returns (top, right, bottom, left) margins for LayerSurface (legacy fallback)
-    pub fn margins(&self) -> (i32, i32, i32, i32) {
-        match self.anchor {
-            Anchor::TopLeft => (self.margin_y, 0, 0, self.margin_x),
-            Anchor::TopRight => (self.margin_y, self.margin_x, 0, 0),
-            Anchor::BottomLeft => (0, 0, self.margin_y, self.margin_x),
-            Anchor::BottomRight => (0, self.margin_x, self.margin_y, 0),
+/// Raw deserialization representation to support explicit, deterministic migration
+/// from legacy layout fields (anchor, margin_x, margin_y, width, height).
+#[derive(Deserialize)]
+struct RawLayoutConfig {
+    grid_position: Option<GridPosition>,
+    size_stage: Option<u8>,
+
+    // Legacy fields for backward compatibility and migration
+    anchor: Option<Anchor>,
+    margin_x: Option<i32>,
+    margin_y: Option<i32>,
+    width: Option<u32>,
+    height: Option<u32>,
+}
+
+impl<'de> serde::Deserialize<'de> for LayoutConfig {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let raw = RawLayoutConfig::deserialize(deserializer)?;
+        Ok(raw.into_layout_config())
+    }
+}
+
+impl RawLayoutConfig {
+    fn into_layout_config(self) -> LayoutConfig {
+        // 1. Both modern fields specified: use directly
+        if let (Some(grid_position), Some(size_stage)) = (self.grid_position, self.size_stage) {
+            return LayoutConfig {
+                grid_position,
+                size_stage: size_stage.clamp(1, 10),
+            };
+        }
+
+        // 2. At least one modern field specified: fill missing modern field with default
+        if self.grid_position.is_some() || self.size_stage.is_some() {
+            return LayoutConfig {
+                grid_position: self.grid_position.unwrap_or_default(),
+                size_stage: self.size_stage.unwrap_or_else(default_size_stage).clamp(1, 10),
+            };
+        }
+
+        // 3. Legacy fields present: perform explicit, deterministic migration
+        if self.anchor.is_some()
+            || self.margin_x.is_some()
+            || self.margin_y.is_some()
+            || self.width.is_some()
+            || self.height.is_some()
+        {
+            return migrate_legacy_layout(
+                self.anchor,
+                self.margin_x,
+                self.margin_y,
+                self.width,
+                self.height,
+            );
+        }
+
+        // 4. Complete fallback to default
+        LayoutConfig::default()
+    }
+}
+
+/// Deterministic migration from legacy layout fields (anchor, margin_x, margin_y, width, height)
+/// to the finite-state layout model (GridPosition + SizeStage).
+pub fn migrate_legacy_layout(
+    anchor: Option<Anchor>,
+    margin_x: Option<i32>,
+    margin_y: Option<i32>,
+    width: Option<u32>,
+    height: Option<u32>,
+) -> LayoutConfig {
+    let legacy_anchor = anchor.unwrap_or(Anchor::TopRight);
+    let mx = margin_x.unwrap_or(40);
+    let my = margin_y.unwrap_or(60);
+    let w = width.unwrap_or(480);
+    let h = height.unwrap_or(270);
+
+    let grid_position = migrate_position(legacy_anchor, mx, my, w, h);
+    let size_stage = migrate_size_stage(w, h);
+
+    info!(
+        "Migrated legacy layout config (anchor={:?}, margin_x={}, margin_y={}, width={}, height={}) -> (grid_position={:?}, size_stage={})",
+        legacy_anchor, mx, my, w, h, grid_position, size_stage
+    );
+
+    LayoutConfig {
+        grid_position,
+        size_stage,
+    }
+}
+
+/// Deterministically map legacy anchor + margins to the closest 3x3 GridPosition.
+/// Analyzes margin offsets relative to the anchor edge:
+/// - Low horizontal margin (<350px): near the anchored edge (Left or Right).
+/// - Medium horizontal margin (350..=1100px): centered horizontally (TopCenter/Center/BottomCenter).
+/// - High horizontal margin (>1100px): shifted to the opposite horizontal edge.
+/// - Low vertical margin (<250px): near the anchored edge (Top or Bottom).
+/// - Medium vertical margin (250..=700px): centered vertically (MiddleLeft/Center/MiddleRight).
+/// - High vertical margin (>700px): shifted to the opposite vertical edge.
+pub fn migrate_position(
+    anchor: Anchor,
+    margin_x: i32,
+    margin_y: i32,
+    _width: u32,
+    _height: u32,
+) -> GridPosition {
+    let col = match anchor {
+        Anchor::TopLeft | Anchor::BottomLeft => {
+            if margin_x < 350 {
+                0 // Left
+            } else if margin_x <= 1100 {
+                1 // Center
+            } else {
+                2 // Right
+            }
+        }
+        Anchor::TopRight | Anchor::BottomRight => {
+            if margin_x < 350 {
+                2 // Right
+            } else if margin_x <= 1100 {
+                1 // Center
+            } else {
+                0 // Left
+            }
+        }
+    };
+
+    let row = match anchor {
+        Anchor::TopLeft | Anchor::TopRight => {
+            if margin_y < 250 {
+                0 // Top
+            } else if margin_y <= 700 {
+                1 // Middle
+            } else {
+                2 // Bottom
+            }
+        }
+        Anchor::BottomLeft | Anchor::BottomRight => {
+            if margin_y < 250 {
+                2 // Bottom
+            } else if margin_y <= 700 {
+                1 // Middle
+            } else {
+                0 // Top
+            }
+        }
+    };
+
+    match (row, col) {
+        (0, 0) => GridPosition::TopLeft,
+        (0, 1) => GridPosition::TopCenter,
+        (0, 2) => GridPosition::TopRight,
+        (1, 0) => GridPosition::MiddleLeft,
+        (1, 1) => GridPosition::Center,
+        (1, 2) => GridPosition::MiddleRight,
+        (2, 0) => GridPosition::BottomLeft,
+        (2, 1) => GridPosition::BottomCenter,
+        (2, 2) => GridPosition::BottomRight,
+        _ => GridPosition::TopRight,
+    }
+}
+
+/// Find the closest SizeStage in SIZE_STAGES based on Euclidean distance to (width, height).
+pub fn migrate_size_stage(width: u32, height: u32) -> u8 {
+    let mut best_stage = 2;
+    let mut min_dist_sq = i64::MAX;
+
+    for info in SIZE_STAGES.iter() {
+        let dw = width as i64 - info.width as i64;
+        let dh = height as i64 - info.height as i64;
+        let dist_sq = dw * dw + dh * dh;
+        if dist_sq < min_dist_sq {
+            min_dist_sq = dist_sq;
+            best_stage = info.stage;
         }
     }
 
+    best_stage
+}
+
+impl LayoutConfig {
     /// Calculate LayerSurface geometry for current grid_position and size_stage
     pub fn calculate_geometry(
         &self,
@@ -328,8 +470,6 @@ pub struct AppearanceConfig {
     pub theme: String,
     #[serde(default = "default_color")]
     pub color: String,
-    #[serde(default = "default_font_scale")]
-    pub font_scale: f32,
     #[serde(default = "default_text_shadow")]
     pub text_shadow: bool,
 }
@@ -340,9 +480,6 @@ fn default_theme() -> String {
 fn default_color() -> String {
     "#FFFFFF".to_string()
 }
-fn default_font_scale() -> f32 {
-    1.0
-}
 fn default_text_shadow() -> bool {
     true
 }
@@ -352,7 +489,6 @@ impl Default for AppearanceConfig {
         Self {
             theme: default_theme(),
             color: default_color(),
-            font_scale: default_font_scale(),
             text_shadow: default_text_shadow(),
         }
     }
@@ -523,33 +659,286 @@ mod tests {
     }
 
     #[test]
-    fn test_grid_position_geometry() {
-        let (screen_w, screen_h) = (2560, 1440);
-        let cfg = LayoutConfig {
-            grid_position: GridPosition::TopRight,
-            size_stage: 2,
-            ..Default::default()
-        };
-        let (_anchor, (top, right, _bottom, _left), (w, h), scale) =
-            cfg.calculate_geometry(screen_w, screen_h);
-        assert_eq!(w, 380);
-        assert_eq!(h, 175);
-        assert_eq!(scale, 1.0);
-        assert_eq!(top, 32);
-        assert_eq!(right, 32);
+    fn test_size_stage_monotonicity_and_integrity() {
+        for i in 0..SIZE_STAGES.len() {
+            let cur = &SIZE_STAGES[i];
+            assert_eq!(cur.stage, (i + 1) as u8);
+            assert!(cur.width > 0);
+            assert!(cur.height > 0);
+            assert!(cur.time_size > 0);
+            assert!(cur.date_size > 0);
+            assert!(cur.padding > 0);
+            assert!(cur.font_scale > 0.0);
 
-        // Center
-        let cfg_c = LayoutConfig {
+            if i + 1 < SIZE_STAGES.len() {
+                let next = &SIZE_STAGES[i + 1];
+                assert!(
+                    next.width > cur.width,
+                    "Stage {} width ({}) not greater than Stage {} width ({})",
+                    next.stage, next.width, cur.stage, cur.width
+                );
+                assert!(
+                    next.height > cur.height,
+                    "Stage {} height ({}) not greater than Stage {} height ({})",
+                    next.stage, next.height, cur.stage, cur.height
+                );
+                assert!(
+                    next.time_size > cur.time_size,
+                    "Stage {} time_size not monotonic", next.stage
+                );
+                assert!(
+                    next.date_size > cur.date_size,
+                    "Stage {} date_size not monotonic", next.stage
+                );
+                assert!(
+                    next.font_scale > cur.font_scale,
+                    "Stage {} font_scale not monotonic", next.stage
+                );
+                assert!(
+                    next.spacing >= cur.spacing,
+                    "Stage {} spacing decreased", next.stage
+                );
+                assert!(
+                    next.padding >= cur.padding,
+                    "Stage {} padding decreased", next.stage
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn test_legacy_config_migration() {
+        // 1. Default legacy configuration: TopRight with default margins and dimensions
+        let legacy_toml = r##"
+[display]
+output = ""
+
+[layout]
+anchor = "TopRight"
+margin_x = 40
+margin_y = 60
+width = 480
+height = 270
+
+[appearance]
+theme = "Modern"
+color = "#FFFFFF"
+font_scale = 1.0
+text_shadow = true
+"##;
+        let cfg: Config = toml::from_str(legacy_toml).expect("parse legacy config");
+        assert_eq!(cfg.layout.grid_position, GridPosition::TopRight);
+        assert_eq!(cfg.layout.size_stage, 3); // 480x270 is closest to Stage 3 (490x225)
+
+        // 2. Legacy TopLeft with small margins
+        let toml_top_left = r#"
+anchor = "TopLeft"
+margin_x = 32
+margin_y = 32
+width = 280
+height = 130
+"#;
+        let cfg_tl: LayoutConfig = toml::from_str(toml_top_left).expect("parse top-left");
+        assert_eq!(cfg_tl.grid_position, GridPosition::TopLeft);
+        assert_eq!(cfg_tl.size_stage, 1);
+
+        // 3. Legacy TopLeft pushed horizontally to center
+        let toml_top_center = r#"
+anchor = "TopLeft"
+margin_x = 720
+margin_y = 32
+width = 380
+height = 175
+"#;
+        let cfg_tc: LayoutConfig = toml::from_str(toml_top_center).expect("parse top-center");
+        assert_eq!(cfg_tc.grid_position, GridPosition::TopCenter);
+        assert_eq!(cfg_tc.size_stage, 2);
+
+        // 4. Legacy pushed both horizontally and vertically to center
+        let toml_center = r#"
+anchor = "TopLeft"
+margin_x = 720
+margin_y = 400
+width = 780
+height = 355
+"#;
+        let cfg_c: LayoutConfig = toml::from_str(toml_center).expect("parse center");
+        assert_eq!(cfg_c.grid_position, GridPosition::Center);
+        assert_eq!(cfg_c.size_stage, 5);
+
+        // 5. Legacy BottomLeft
+        let toml_bl = r#"
+anchor = "BottomLeft"
+margin_x = 32
+margin_y = 32
+width = 280
+height = 130
+"#;
+        let cfg_bl: LayoutConfig = toml::from_str(toml_bl).expect("parse bottom-left");
+        assert_eq!(cfg_bl.grid_position, GridPosition::BottomLeft);
+        assert_eq!(cfg_bl.size_stage, 1);
+
+        // 6. Legacy BottomRight
+        let toml_br = r#"
+anchor = "BottomRight"
+margin_x = 40
+margin_y = 40
+width = 2060
+height = 920
+"#;
+        let cfg_br: LayoutConfig = toml::from_str(toml_br).expect("parse bottom-right");
+        assert_eq!(cfg_br.grid_position, GridPosition::BottomRight);
+        assert_eq!(cfg_br.size_stage, 10);
+
+        // 7. Legacy MiddleLeft
+        let toml_ml = r#"
+anchor = "TopLeft"
+margin_x = 32
+margin_y = 400
+width = 380
+height = 175
+"#;
+        let cfg_ml: LayoutConfig = toml::from_str(toml_ml).expect("parse mid-left");
+        assert_eq!(cfg_ml.grid_position, GridPosition::MiddleLeft);
+
+        // 8. Legacy MiddleRight
+        let toml_mr = r#"
+anchor = "TopRight"
+margin_x = 32
+margin_y = 400
+width = 380
+height = 175
+"#;
+        let cfg_mr: LayoutConfig = toml::from_str(toml_mr).expect("parse mid-right");
+        assert_eq!(cfg_mr.grid_position, GridPosition::MiddleRight);
+
+        // 9. Legacy BottomCenter
+        let toml_bc = r#"
+anchor = "BottomLeft"
+margin_x = 720
+margin_y = 32
+width = 380
+height = 175
+"#;
+        let cfg_bc: LayoutConfig = toml::from_str(toml_bc).expect("parse bot-center");
+        assert_eq!(cfg_bc.grid_position, GridPosition::BottomCenter);
+
+        // 10. Reserialization writes strictly the new format without legacy fields
+        let serialized = toml::to_string_pretty(&cfg).expect("serialize migrated");
+        assert!(!serialized.contains("anchor"));
+        assert!(!serialized.contains("margin_x"));
+        assert!(!serialized.contains("margin_y"));
+        assert!(!serialized.contains("width"));
+        assert!(!serialized.contains("height"));
+        assert!(!serialized.contains("font_scale"));
+        assert!(serialized.contains("grid_position"));
+        assert!(serialized.contains("size_stage"));
+    }
+
+    #[test]
+    fn test_geometry_all_9_grid_positions_multiple_resolutions() {
+        use cosmic::iced::platform_specific::shell::commands::layer_surface::Anchor as LayerAnchor;
+
+        let all_positions = [
+            (GridPosition::TopLeft, LayerAnchor::TOP | LayerAnchor::LEFT),
+            (GridPosition::TopCenter, LayerAnchor::TOP | LayerAnchor::LEFT),
+            (GridPosition::TopRight, LayerAnchor::TOP | LayerAnchor::RIGHT),
+            (GridPosition::MiddleLeft, LayerAnchor::TOP | LayerAnchor::LEFT),
+            (GridPosition::Center, LayerAnchor::TOP | LayerAnchor::LEFT),
+            (GridPosition::MiddleRight, LayerAnchor::TOP | LayerAnchor::RIGHT),
+            (GridPosition::BottomLeft, LayerAnchor::BOTTOM | LayerAnchor::LEFT),
+            (GridPosition::BottomCenter, LayerAnchor::BOTTOM | LayerAnchor::LEFT),
+            (GridPosition::BottomRight, LayerAnchor::BOTTOM | LayerAnchor::RIGHT),
+        ];
+
+        let test_resolutions = [
+            (640, 360),   // Minimum supported
+            (1280, 720),  // HD
+            (1920, 1080), // FHD
+            (2560, 1440), // WQHD
+            (3840, 2160), // 4K
+        ];
+
+        let test_stages = [1u8, 2, 5, 8, 10];
+
+        for (screen_w, screen_h) in test_resolutions {
+            for stage in test_stages {
+                let stage_info = get_size_stage(stage);
+                let exp_w = stage_info.width.min(screen_w);
+                let exp_h = stage_info.height.min(screen_h);
+                let gutter = 32i32;
+
+                for &(pos, expected_layer_anchor) in &all_positions {
+                    let cfg = LayoutConfig {
+                        grid_position: pos,
+                        size_stage: stage,
+                    };
+
+                    let (anchor, (top, right, bottom, left), (w, h), scale) =
+                        cfg.calculate_geometry(screen_w, screen_h);
+
+                    assert_eq!(anchor, expected_layer_anchor, "Anchor mismatch for {:?} on {}x{}", pos, screen_w, screen_h);
+                    assert_eq!(w, exp_w);
+                    assert_eq!(h, exp_h);
+                    assert_eq!(scale, stage_info.font_scale);
+                    assert!(top >= 0 && right >= 0 && bottom >= 0 && left >= 0);
+
+                    // Position specific boundary assertions
+                    match pos {
+                        GridPosition::TopLeft => {
+                            assert_eq!((top, right, bottom, left), (gutter, 0, 0, gutter));
+                        }
+                        GridPosition::TopCenter => {
+                            let exp_mid_left = ((screen_w as i32 - exp_w as i32) / 2).max(gutter);
+                            assert_eq!((top, right, bottom, left), (gutter, 0, 0, exp_mid_left));
+                        }
+                        GridPosition::TopRight => {
+                            assert_eq!((top, right, bottom, left), (gutter, gutter, 0, 0));
+                        }
+                        GridPosition::MiddleLeft => {
+                            let exp_mid_top = ((screen_h as i32 - exp_h as i32) / 2).max(gutter);
+                            assert_eq!((top, right, bottom, left), (exp_mid_top, 0, 0, gutter));
+                        }
+                        GridPosition::Center => {
+                            let exp_mid_left = ((screen_w as i32 - exp_w as i32) / 2).max(gutter);
+                            let exp_mid_top = ((screen_h as i32 - exp_h as i32) / 2).max(gutter);
+                            assert_eq!((top, right, bottom, left), (exp_mid_top, 0, 0, exp_mid_left));
+                        }
+                        GridPosition::MiddleRight => {
+                            let exp_mid_top = ((screen_h as i32 - exp_h as i32) / 2).max(gutter);
+                            assert_eq!((top, right, bottom, left), (exp_mid_top, gutter, 0, 0));
+                        }
+                        GridPosition::BottomLeft => {
+                            assert_eq!((top, right, bottom, left), (0, 0, gutter, gutter));
+                        }
+                        GridPosition::BottomCenter => {
+                            let exp_mid_left = ((screen_w as i32 - exp_w as i32) / 2).max(gutter);
+                            assert_eq!((top, right, bottom, left), (0, 0, gutter, exp_mid_left));
+                        }
+                        GridPosition::BottomRight => {
+                            assert_eq!((top, right, bottom, left), (0, gutter, gutter, 0));
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_geometry_determinism() {
+        let (screen_w, screen_h) = (1920, 1080);
+        let cfg = LayoutConfig {
             grid_position: GridPosition::Center,
-            size_stage: 5,
-            ..Default::default()
+            size_stage: 4,
         };
-        let (_anchor_c, (t, _r, _b, l), (w_c, h_c), _s) =
-            cfg_c.calculate_geometry(screen_w, screen_h);
-        assert_eq!(w_c, 780);
-        assert_eq!(h_c, 355);
-        assert_eq!(l, (2560 - 780) / 2);
-        assert_eq!(t, (1440 - 355) / 2);
+
+        let result1 = cfg.calculate_geometry(screen_w, screen_h);
+        let result2 = cfg.calculate_geometry(screen_w, screen_h);
+        let result3 = LayoutConfig::geometry_for(GridPosition::Center, 4, screen_w, screen_h);
+
+        assert_eq!(result1, result2);
+        assert_eq!(result1, result3);
     }
 }
+
 

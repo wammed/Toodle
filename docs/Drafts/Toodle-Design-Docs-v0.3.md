@@ -309,7 +309,7 @@ Edit Layout Panel は独立した Layer::Top Surface とする。
 
 ## 7.2 Widget Surface の更新
 
-Edit 中の Slider / Anchor 操作では、既存 Widget Surface に対して Layer Surface Command を適用する。
+Edit 中の Grid Position / Size Stage 操作では、既存 Widget Surface に対して Layer Surface Command を適用する。
 
 主な操作：
 
@@ -439,9 +439,10 @@ WQHD (2560×1440) を最大解像度として最適化した 10 段階のサイ�
 - ウィンドウ縦幅（`height`）は、特大フォント時の行高および天候アイコン（`FONT_WEATHER_ICONS`）のグリフ境界ボックスを余裕をもって包含する十分なヘッドルームを確保し、下部クリップ（見切れ）を物理防止。
 - ウィンドウサイズとフォントサイズが 1:1 で自動同期するため、設定 UI の `font_scale` スライダーは廃止され、ステージ選択ボタンに一元化。
 
-## 9.3 Legacy Compatibility (後方互換性)
+## 9.3 Legacy Migration & Compatibility (旧設定マイグレーション)
 
-既存の `config.toml` に `anchor`, `margin_x`, `margin_y`, `width`, `height` が存在する場合でも、デシリアライズ時のデフォルト値補完および `to_legacy_anchor()` によりシームレスに後方互換性を維持する。
+既存の `config.toml` に旧来の連続値フィールド（`anchor`, `margin_x`, `margin_y`, `width`, `height`, `font_scale`）が存在する場合でも、デシリアライズ時に明示的・確定的なマイグレーションルールにより、最も近い `GridPosition`（9ゾーン）および `SizeStage`（10段階）へ自動変換する。
+次回設定保存時には旧フィールドが削除され、クリーンな新モデル（`grid_position`, `size_stage`）のみが出力される。
 
 ---
 
@@ -821,15 +822,10 @@ output = ""
 [layout]
 grid_position = "TopRight"
 size_stage = 2
-# レガシー互換フィールド（自動補完・読み込み対応）
-# anchor = "TopRight"
-# margin_x = 40
-# margin_y = 60
 
 [appearance]
 theme = "Modern"
 color = "#FFFFFF"
-font_scale = 1.0
 text_shadow = true
 
 [weather]

@@ -131,16 +131,12 @@ cargo build --release
 output = "" # 対象 Wayland 出力先（例: "DP-1"、空文字でアクティブ出力）
 
 [layout]
-anchor = "TopRight" # TopLeft, TopRight, BottomLeft, BottomRight
-margin_x = 40
-margin_y = 60
-width = 280
-height = 140
+grid_position = "TopRight" # 9ゾーン: TopLeft, TopCenter, TopRight, MiddleLeft, Center, MiddleRight, BottomLeft, BottomCenter, BottomRight
+size_stage = 2            # 10段階: 1 (Compact 280x130) 〜 10 (Max WQHD 2060x920)
 
 [appearance]
 theme = "Modern"
 color = "#FFFFFF"
-font_scale = 1.0
 text_shadow = true
 
 [weather]
@@ -150,14 +146,26 @@ longitude = 139.6917
 temperature_unit = "Celsius" # Celsius, Fahrenheit
 ```
 
+> **設定の自動マイグレーション**:
+> 旧バージョンの設定ファイル（`anchor`, `margin_x`, `margin_y`, `width`, `height`, `font_scale` 等）が残っている場合でも、読み込み時に自動的かつ確定的に最も近い `grid_position` および `size_stage` へマイグレーションされます。次回保存時には新仕様のフォーマットで保存されます。
+
+> **ディスプレイおよびマルチモニター環境についての注意事項**:
+> 単一ディスプレイにおける各解像度（640×360 から WQHD 2560×1440、4K 3840×2160 まで）のジオメトリ計算は自動単体テストにより検証済みです。ただし、解像度やスケーリングが異なる複数ディスプレイ（マルチモニター）環境については、実機での十分な動作検証が行えておらず、現時点では未検証事項となります。マルチモニター実機環境が整い次第、追加の検証を実施予定です。
+
 ---
 
 ## 基本操作
 
-- **左クリック**: ウィジェットやボタンのフォーカス・操作。
+- **左クリック**: カレンダーの日付切り替えや各種ボタンの操作。
 - **右クリック**: コンテキストメニュー（`Calendar`, `Weekly Forecast`, `Edit Layout`, `Settings`, `Quit`）を表示。
-- **Edit Layout Mode**: 独立した `Edit Layout Panel` のスライダーでマージン・サイズ・フォントスケールをリアルタイム調整し、`Save` または `Cancel`。
-- **設定アプリ (`toodle-settings`)**: スライダーやテーマ、都市ボタンの操作がデスクトップ上のウィジェットへ即座にリアルタイム反映。
+- **Edit Layout Mode**: 独立した `Edit Layout Panel` の 3×3 グリッドボタンと 10 段階のサイズボタンにより、Wayland サーフェスを破棄・再生成せずインプレースで瞬時にレイアウトを変更、`Save` または `Cancel`。
+- **設定アプリ (`toodle-settings`)**: テーマプリセット、16色パレット、都市プリセットの変更がデスクトップ上のウィジェットへ即座にリアルタイム反映。
+
+---
+
+## 開発について
+
+Toodle は、AIを活用した **Vibe Coding** によって開発されています。アーキテクチャの検討、実装、リファクタリング、テスト、ドキュメント作成、コードレビューなどの開発工程でAIを積極的に活用しています。生成されたコードや提案をそのまま採用するのではなく、実際の動作確認やレビューを行いながら開発しています。
 
 ---
 

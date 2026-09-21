@@ -21,7 +21,7 @@ pub struct EditState {
 }
 
 impl EditState {
-    pub fn new(current: LayoutConfig, _font_scale: f32, screen_w: u32, screen_h: u32) -> Self {
+    pub fn new(current: LayoutConfig, screen_w: u32, screen_h: u32) -> Self {
         let stage_info = get_size_stage(current.size_stage);
         Self {
             layout: current,
@@ -40,8 +40,6 @@ impl EditState {
                 let stage = stage.clamp(1, 10);
                 self.layout.size_stage = stage;
                 let info = get_size_stage(stage);
-                self.layout.width = info.width;
-                self.layout.height = info.height;
                 self.font_scale = info.font_scale;
             }
             EditMessage::Save | EditMessage::Cancel => {}

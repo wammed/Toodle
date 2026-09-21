@@ -291,7 +291,8 @@ impl Application for ToodleApp {
                 self.popup_surface_id = Some(new_popup_id);
                 self.active_popup = Some(ActivePopup::ContextMenu);
 
-                let (w_top, w_right, w_bottom, w_left) = self.config.layout.margins();
+                let (w_anchor, (w_top, w_right, w_bottom, w_left), _, _) =
+                    self.config.layout.calculate_geometry(self.screen_w, self.screen_h);
                 let popup_margin = IcedMargin {
                     top: w_top + 16,
                     right: w_right + 16,
@@ -304,7 +305,7 @@ impl Application for ToodleApp {
                     layer: Layer::Top,
                     keyboard_interactivity: KeyboardInteractivity::OnDemand,
                     input_zone: None,
-                    anchor: self.config.layout.anchor.to_layer_anchor(),
+                    anchor: w_anchor,
                     output: self.get_target_iced_output(),
                     namespace: "toodle-popup".to_string(),
                     margin: popup_margin,
@@ -324,10 +325,9 @@ impl Application for ToodleApp {
                 }
                 self.active_popup = None;
 
-                // Initialize Edit State with current layout, font_scale, and screen size
+                // Initialize Edit State with current layout and screen size
                 self.state = WidgetState::Edit(EditState::new(
                     self.config.layout.clone(),
-                    self.config.appearance.font_scale,
                     self.screen_w,
                     self.screen_h,
                 ));
@@ -395,7 +395,8 @@ impl Application for ToodleApp {
                 self.popup_surface_id = Some(new_popup_id);
                 self.active_popup = Some(ActivePopup::Calendar(popup::CalendarState::new()));
 
-                let (w_top, w_right, w_bottom, w_left) = self.config.layout.margins();
+                let (w_anchor, (w_top, w_right, w_bottom, w_left), _, _) =
+                    self.config.layout.calculate_geometry(self.screen_w, self.screen_h);
                 let popup_margin = IcedMargin {
                     top: w_top + 16,
                     right: w_right + 16,
@@ -408,7 +409,7 @@ impl Application for ToodleApp {
                     layer: Layer::Top,
                     keyboard_interactivity: KeyboardInteractivity::OnDemand,
                     input_zone: None,
-                    anchor: self.config.layout.anchor.to_layer_anchor(),
+                    anchor: w_anchor,
                     output: self.get_target_iced_output(),
                     namespace: "toodle-calendar".to_string(),
                     margin: popup_margin,
@@ -431,7 +432,8 @@ impl Application for ToodleApp {
                 self.popup_surface_id = Some(new_popup_id);
                 self.active_popup = Some(ActivePopup::Forecast);
 
-                let (w_top, w_right, w_bottom, w_left) = self.config.layout.margins();
+                let (w_anchor, (w_top, w_right, w_bottom, w_left), _, _) =
+                    self.config.layout.calculate_geometry(self.screen_w, self.screen_h);
                 let popup_margin = IcedMargin {
                     top: w_top + 16,
                     right: w_right + 16,
@@ -444,7 +446,7 @@ impl Application for ToodleApp {
                     layer: Layer::Top,
                     keyboard_interactivity: KeyboardInteractivity::OnDemand,
                     input_zone: None,
-                    anchor: self.config.layout.anchor.to_layer_anchor(),
+                    anchor: w_anchor,
                     output: self.get_target_iced_output(),
                     namespace: "toodle-forecast".to_string(),
                     margin: popup_margin,
@@ -495,12 +497,6 @@ impl Application for ToodleApp {
                 let mut tasks = Vec::new();
                 if let WidgetState::Edit(edit_state) = &self.state {
                     self.config.layout = edit_state.layout.clone();
-                    self.config.appearance.font_scale = edit_state.font_scale;
-                    let (_anchor, _margins, (w, h), _) =
-                        self.config.layout.calculate_geometry(self.screen_w, self.screen_h);
-                    self.config.layout.width = w;
-                    self.config.layout.height = h;
-                    self.config.layout.anchor = edit_state.layout.grid_position.to_legacy_anchor();
                     let _ = self.config.save();
                 }
 

@@ -128,19 +128,15 @@ Settings are saved in `~/.config/toodle/config.toml`:
 
 ```toml
 [display]
-output = "" # Target Wayland output (e.g. "DP-1", defaults to active output)
+output = "" # Target Wayland output (e.g. "DP-1", empty defaults to active output)
 
 [layout]
-anchor = "TopRight" # TopLeft, TopRight, BottomLeft, BottomRight
-margin_x = 40
-margin_y = 60
-width = 280
-height = 140
+grid_position = "TopRight" # 9 zones: TopLeft, TopCenter, TopRight, MiddleLeft, Center, MiddleRight, BottomLeft, BottomCenter, BottomRight
+size_stage = 2            # 10 stages: 1 (Compact 280x130) to 10 (Max WQHD 2060x920)
 
 [appearance]
 theme = "Modern"
 color = "#FFFFFF"
-font_scale = 1.0
 text_shadow = true
 
 [weather]
@@ -150,14 +146,26 @@ longitude = 139.6917
 temperature_unit = "Celsius" # Celsius, Fahrenheit
 ```
 
+> **Automatic Config Migration**:
+> If an older `config.toml` containing legacy layout fields (`anchor`, `margin_x`, `margin_y`, `width`, `height`) or `font_scale` is loaded, Toodle automatically and deterministically migrates it to the closest `grid_position` and `size_stage`, preserving your preferred position and sizing before saving the clean modern structure.
+
+> **Display & Multi-Monitor Note**:
+> Single-display geometry across standard resolutions (from 640×360 up to WQHD 2560×1440 and 4K 3840×2160) is verified through comprehensive automated geometry unit testing. However, multi-monitor configurations—especially those with differing mixed resolutions or per-monitor fractional scaling—have not yet been sufficiently validated on physical hardware and remain an unverified item until dedicated test hardware is available.
+
 ---
 
 ## Key Interactions
 
-- **Left Click**: Focus or trigger interactive elements.
+- **Left Click**: Focus or trigger interactive elements (e.g. month navigation in Calendar).
 - **Right Click**: Opens the Context Menu popup (`Calendar`, `Weekly Forecast`, `Edit Layout`, `Settings`, `Quit`).
-- **Edit Layout Mode**: Adjust margins, dimensions, and font scale via the dedicated `Edit Layout Panel` with live in-place updates, then click `Save` or `Cancel`.
-- **Settings Application**: Changes to sliders, themes, colors, and city presets are applied in real-time to the active widget.
+- **Edit Layout Mode**: Adjust position using the 3×3 zone grid and select one of 10 discrete size stages via the dedicated `Edit Layout Panel` with instantaneous in-place Wayland layer surface updates, then click `Save` or `Cancel`.
+- **Settings Application**: Changes to themes, 16-color swatches, and city presets are applied in real-time to the active widget.
+
+---
+
+## Development
+
+Toodle is developed using AI-assisted Vibe Coding. AI is actively used for architecture exploration, implementation, refactoring, testing, documentation, and code review, with the resulting code and behavior reviewed and validated throughout development.
 
 ---
 

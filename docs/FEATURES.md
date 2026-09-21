@@ -14,8 +14,8 @@ This document details the functional capabilities and features of **Toodle**, th
 - **Full Date Display**:
   - Displays day of the week, full month name, day of the month, and year (e.g., `Monday, September 20, 2026`).
   - Formatted in English (US).
-- **Dynamic Font Scaling**:
-  - Scales cleanly from 30% (`0.3x`) to 1000% (`10.0x`) without pixelation or clipping.
+- **Unified Typography Scaling**:
+  - Automatically synchronizes time (38..310px), date (14..110px), spacing, and padding across 10 discrete size stages without pixelation, blur, or bottom clipping.
 - **Text Drop Shadow**:
   - Optional soft ambient text shadow (`Color::from_rgba(0, 0, 0, 0.65)`, offset: `(1.0, 2.0)`, blur: `6.0px`) for optimal readability over light or vibrant wallpapers.
 
