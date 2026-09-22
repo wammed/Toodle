@@ -209,6 +209,10 @@
    - 都市変更時に以前の都市の遅延レスポンスが新都市の表示を上書きしないための Request Generation ID 管理は未導入。
 6. **Popup Dismissal**:
    - ポップアップのフォーカス喪失（focus loss）や領域外クリック（outside click）による自動閉鎖は、実機挙動の検証および実装仕様の確定が必要。
+7. **COSMIC ログイン自動起動時の入力領域競合 (Autostart Race Condition)**:
+   - **現象**: ログイン時の自動起動で `Layer::Bottom` がデスクトップ背景描画層（`cosmic-bg` 等）より先に生成されると、入力イベント（右クリック等）を奪われる競合が発生し、右クリックメニューが表示されなくなる。
+   - **ワークアラウンド**: 起動コマンドに 3 秒程度の遅延を設定（例: `sh -c "sleep 3 && toodle"`）。
+   - **恒久対策（ロードマップ）**: Phase 6 の systemd.user サービス（`After=graphical-session.target`）化によるセッション初期化順序の保証、または起動完了後の入力領域再適用（初期化ウェイト・`set_input_zone` の遅延再適用）。
 
 ---
 
@@ -295,8 +299,9 @@ cargo build --release
    - Open-Meteo Geocoding API を用いた都市名入力からの自動座標解決。
 
 ### Phase 6 — Distribution (配布・システム統合)
-1. **Systemd User Service**:
-   - COSMIC セッション自動起動用 `toodle.service` の整備。
+1. **Systemd User Service & Autostart 競合の根本解消**:
+   - COSMIC セッション自動起動用 `toodle.service`（`After=graphical-session.target`）の整備。
+   - ログイン時の `cosmic-bg` 初期化競合に対する根本対応（起動完了後の入力領域再適用 / 適切な起動同期）。
 2. **Desktop Entry / Packaging**:
    - デスクトップエントリの洗練、Arch Linux (AUR) 向け PKGBUILD 作成。
 

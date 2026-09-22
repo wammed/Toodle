@@ -1044,6 +1044,14 @@ Location 変更時の非同期 Weather Request に対して、古い Request の
 
 Popup の focus loss / outside click による自動閉鎖は、実機挙動を確認したうえで実装仕様を確定する。
 
+## 25.7 COSMIC ログイン自動起動時の入力領域競合 (Autostart Race Condition)
+
+- **現象**: ログイン時の自動起動で `Layer::Bottom` がデスクトップ背景描画層（`cosmic-bg` 等）より先に生成されると、入力イベント（右クリック等）が背景層に遮られ、右クリックが反応しない競合が発生する。
+- **ワークアラウンド**: 起動コマンドに 3 秒程度の遅延を設定する（例: `sh -c "sleep 3 && toodle"`）。
+- **根本対応（ロードマップ）**:
+  1. Phase 6 にて systemd ユーザーサービス（`After=graphical-session.target`）化を行い、デスクトップセッション描画完了後に起動順序を制御する。
+  2. またはウィジェット起動完了後の初期化ウェイト・`set_input_zone` の遅延再適用を導入する。
+
 ---
 
 # 26. Project Structure
@@ -1165,8 +1173,8 @@ v0.3 の今後の作業は「旧設計への回帰」ではなく、現在のア
 
 候補：
 
-1. Systemd User Service
-2. Desktop Entry
+1. Systemd User Service（`After=graphical-session.target` による自動起動・入力領域競合の根本解消）
+2. Desktop Entry / Autostart 遅延対応
 3. Icon Assets
 4. Arch Linux / AUR packaging
 
@@ -1295,6 +1303,7 @@ Phase 0 の実機検証および Phase 1〜4 の実装結果を反映。
 | Weather TTL | Current 30m / Forecast 3h | 設計値として維持、実装分離は Gap |
 | Backoff | 必須設計 | Known Gap |
 | Geocoding | 設計項目 | Known Gap |
+| Autostart | 未定義 | 起動遅延ワークアラウンド（3s）/ systemd.user 根本対策（Known Gap） |
 
 ---
 

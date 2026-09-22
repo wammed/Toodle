@@ -72,6 +72,19 @@ cargo build --release
 # toodle-settings
 ```
 
+#### 自動起動（Autostart）時の注意点・トラブルシューティング
+
+COSMIC デスクトップ環境の自動起動（設定アプリの「自動起動」や `$HOME/.config/autostart/*.desktop`）に登録する場合、デスクトップ背景コンポーネント（`cosmic-bg` 等）の初期化順序によって、起動直後の入力領域が遮られ、**右クリックが反応しなくなる初期不良のような挙動**が発生する場合があります。
+
+これを防ぐため、起動コマンドに 2〜3 秒程度の遅延を設定するか、systemd ユーザーサービス経由での起動を推奨します：
+
+```desktop
+# 例: ~/.config/autostart/com.github.wammed.toodle.desktop の Exec 行
+Exec=sh -c "sleep 3 && toodle"
+# またはフルパス指定:
+# Exec=sh -c "sleep 3 && $HOME/.local/bin/toodle"
+```
+
 ---
 
 ## アーキテクチャ概要

@@ -72,6 +72,21 @@ To install the release binaries (`toodle` and `toodle-settings`) to `$HOME/.loca
 # toodle-settings
 ```
 
+#### Autostart & Troubleshooting (COSMIC Desktop)
+
+When registering Toodle to launch automatically at login (e.g. via COSMIC Settings > Autostart or `$HOME/.config/autostart/*.desktop`):
+
+Due to initialization ordering with desktop background components (`cosmic-bg`, etc.), the widget's input region may be occluded if launched prematurely, causing right-clicks to appear unresponsive.
+
+To avoid this race condition, configure the startup command with a 2–3 second delay or launch via a systemd user service:
+
+```desktop
+# Example: Exec line in ~/.config/autostart/com.github.wammed.toodle.desktop
+Exec=sh -c "sleep 3 && toodle"
+# Or with explicit absolute path:
+# Exec=sh -c "sleep 3 && $HOME/.local/bin/toodle"
+```
+
 ---
 
 ## Architecture at a Glance
