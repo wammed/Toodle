@@ -29,7 +29,7 @@
 - **Dedicated Settings App (`toodle-settings`)**: Native XDG Toplevel application (720 x 780, solid dark background) with 4 tabs (Appearance, Layout, Weather, Display), real-time atomic auto-save, 10 theme presets, 16 curated colors, 9-zone layout and 10-stage size selectors, and quick city presets.
 - **Decoupled Build & Local Install Structure**: `cargo build --release` strictly compiles the Rust binaries without touching the user's home directory. Local installation to `$HOME/.local/bin` is handled via explicit execution of `./tools/install-local.sh`, establishing a clean architecture for future distribution packaging (.deb, RPM, AUR).
 - **Live Inotify Hot-Reloading**: Automatically updates running widgets in real-time when `~/.config/toodle/config.toml` changes (25ms response).
-- **100% Embedded Fonts & Color Vector Weather Icons**: Includes Roboto Sans, JetBrains Mono, DejaVu Serif, and Open Sans statically embedded into the binary via `include_bytes!`. Weather condition icons are rendered using embedded Bas Milius Meteocons color SVG assets (`resources/icons/meteocons/`, MIT License) rather than monochrome font glyphs or Unicode emojis, ensuring vibrant, crisp, modern visual representation across all display scales without external dependencies.
+- **100% Embedded Fonts & Color Vector Weather Icons**: Includes Roboto, JetBrains Mono, DejaVu Serif, and Open Sans statically embedded into the binary via `include_bytes!`. Weather condition icons are rendered using embedded Bas Milius Meteocons color SVG assets (`resources/icons/meteocons/`, MIT License) rather than monochrome font glyphs or Unicode emojis, ensuring vibrant, crisp, modern visual representation across all display scales without external dependencies.
 
 ---
 
@@ -76,12 +76,12 @@ To install the release binaries (`toodle` and `toodle-settings`) to `$HOME/.loca
 
 When registering Toodle to launch automatically at login (e.g. via COSMIC Settings > Autostart or `$HOME/.config/autostart/*.desktop`):
 
-Due to initialization ordering with desktop background components (`cosmic-bg`, etc.), the widget's input region may be occluded if launched prematurely, causing right-clicks to appear unresponsive.
+Depending on the initialization timing between the COSMIC login session and Toodle's Layer Surface / Input Region, right-clicks may not respond immediately after autostart. While the exact root cause remains unconfirmed, potential timing competition with desktop background initialization has been hypothesized.
 
-To avoid this race condition, configure the startup command with a 2–3 second delay or launch via a systemd user service:
+The verified workaround on tested hardware is to configure a ~3-second delay in the XDG Autostart command (introducing a 3-second delay has been confirmed to resolve the issue on tested machines; session startup ordering via a systemd user service is a future alternative / improvement candidate):
 
 ```desktop
-# Example: Exec line in ~/.config/autostart/com.github.wammed.toodle.desktop
+# Verified workaround on tested hardware (e.g. Exec line in ~/.config/autostart/com.github.wammed.toodle.desktop)
 Exec=sh -c "sleep 3 && toodle"
 # Or with explicit absolute path:
 # Exec=sh -c "sleep 3 && $HOME/.local/bin/toodle"
@@ -126,14 +126,14 @@ Exec=sh -c "sleep 3 && toodle"
 
 | Theme | Font Family | Default Color | Style Description |
 |---|---|---|---|
-| **Modern** | Roboto Sans Bold / Regular | `#FFFFFF` | Contemporary clean aesthetic |
+| **Modern** | Roboto Bold / Regular | `#FFFFFF` | Contemporary clean aesthetic |
 | **Classic** | DejaVu Serif Bold / Regular | `#E2E8F0` | Sophisticated timeless timepiece look |
 | **Digital Mono** | JetBrains Mono Bold / Regular | `#38BDF8` | Sleek developer monospace terminal style |
 | **Minimal** | Open Sans Bold / Regular | `#94A3B8` | Understated, clean humanist design |
 | **Cyberpunk** | JetBrains Mono Bold / Regular | `#EAB308` | Futuristic neon high-contrast look |
 | **Nord** | Open Sans Bold / Regular | `#38BDF8` | Cool arctic blue and slate tones |
 | **Warm Sunset** | DejaVu Serif Bold / Regular | `#F59E0B` | Warm literary amber and evening glow |
-| **Forest** | Roboto Sans Bold / Regular | `#10B981` | Natural fresh emerald green theme |
+| **Forest** | Roboto Bold / Regular | `#10B981` | Natural fresh emerald green theme |
 | **Slate** | JetBrains Mono Bold / Regular | `#94A3B8` | Industrial muted dark metallic slate |
 | **Rose Gold** | DejaVu Serif Bold / Regular | `#EC4899` | Elegant pastel rose and violet accents |
 

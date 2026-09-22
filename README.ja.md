@@ -29,7 +29,7 @@
 - **独立設定アプリ (`toodle-settings`)**: ネイティブ XDG Toplevel ウィンドウ（720 x 780、ソリッドダーク背景）。4 タブ構成（Appearance, Layout, Weather, Display）、リアルタイム自動保存、10 テーマプリセット、16 色カラーパレット、9分割配置・10段階サイズセレクタ、クイック都市選択。
 - **明確に分離されたビルド・インストール構造**: `cargo build --release` はバイナリ生成のみを担当し、ユーザー環境（`$HOME/.local/bin`）への反映は明示的な `./tools/install-local.sh` に分離。将来のディストリビューションパッケージング（.deb, RPM, AUR 等）とも整合。
 - **inotify 設定ホットリロード**: `~/.config/toodle/config.toml` の変更を 25ms で高速検知し、ウィジェットへ即座に反映。
-- **完全組み込みフォント & カラーベクター天気アイコン**: Roboto Sans, JetBrains Mono, DejaVu Serif, Open Sans を `include_bytes!` で静的組み込み。天気アイコンは従来のモノクロフォントや Unicode 絵文字に代わり、同梱 Bas Milius Meteocons カラー SVG アセット（`resources/icons/meteocons/`、MIT License）で描画され、外部システム非依存でどの環境・表示スケールでも鮮やかで美しいモダンなアイコンを表示。
+- **完全組み込みフォント & カラーベクター天気アイコン**: Roboto, JetBrains Mono, DejaVu Serif, Open Sans を `include_bytes!` で静的組み込み。天気アイコンは従来のモノクロフォントや Unicode 絵文字に代わり、同梱 Bas Milius Meteocons カラー SVG アセット（`resources/icons/meteocons/`、MIT License）で描画され、外部システム非依存でどの環境・表示スケールでも鮮やかで美しいモダンなアイコンを表示。
 
 ---
 
@@ -74,12 +74,12 @@ cargo build --release
 
 #### 自動起動（Autostart）時の注意点・トラブルシューティング
 
-COSMIC デスクトップ環境の自動起動（設定アプリの「自動起動」や `$HOME/.config/autostart/*.desktop`）に登録する場合、デスクトップ背景コンポーネント（`cosmic-bg` 等）の初期化順序によって、起動直後の入力領域が遮られ、**右クリックが反応しなくなる初期不良のような挙動**が発生する場合があります。
+COSMIC デスクトップ環境の自動起動（設定アプリの「自動起動」や `$HOME/.config/autostart/*.desktop`）に登録する場合、COSMIC のログインセッション初期化と Toodle の Layer Surface / Input Region 初期化のタイミングによって、起動直後に**右クリックが反応しなくなる挙動**が発生する場合があります。現時点では正確な根本原因は未確定ですが、デスクトップ背景等の初期化順序との競合の可能性が考えられます。
 
-これを防ぐため、起動コマンドに 2〜3 秒程度の遅延を設定するか、systemd ユーザーサービス経由での起動を推奨します：
+現在の実機環境で確認済みの回避策は、XDG Autostart の起動コマンドに 3 秒程度の遅延を設定する方法です（現在の実機環境では 3 秒程度の遅延によって問題が解消することを確認しています。systemd user service 等による起動順序制御は、将来的な改善・代替候補です）：
 
 ```desktop
-# 例: ~/.config/autostart/com.github.wammed.toodle.desktop の Exec 行
+# 実機確認済みワークアラウンド（例: ~/.config/autostart/com.github.wammed.toodle.desktop の Exec 行）
 Exec=sh -c "sleep 3 && toodle"
 # またはフルパス指定:
 # Exec=sh -c "sleep 3 && $HOME/.local/bin/toodle"
@@ -124,14 +124,14 @@ Exec=sh -c "sleep 3 && toodle"
 
 | テーマ名 | フォントファミリ | デフォルト推奨色 | スタイル解説 |
 |---|---|---|---|
-| **Modern** | Roboto Sans Bold / Regular | `#FFFFFF` | クリーンで現代的なサンセリフスタイル |
+| **Modern** | Roboto Bold / Regular | `#FFFFFF` | クリーンで現代的なサンセリフスタイル |
 | **Classic** | DejaVu Serif Bold / Regular | `#E2E8F0` | 重厚で上品なタイムピースクラシックスタイル |
 | **Digital Mono** | JetBrains Mono Bold / Regular | `#38BDF8` | 開発者向けターミナルライクなモノスペース |
 | **Minimal** | Open Sans Bold / Regular | `#94A3B8` | 控えめで洗練されたヒューマニストデザイン |
 | **Cyberpunk** | JetBrains Mono Bold / Regular | `#EAB308` | ネオンイエローの高コントラストフューチャースタイル |
 | **Nord** | Open Sans Bold / Regular | `#38BDF8` | 北極の冷涼さを感じるアークティックブルースタイル |
 | **Warm Sunset** | DejaVu Serif Bold / Regular | `#F59E0B` | 夕暮れの温かみを感じるアンバーゴールド |
-| **Forest** | Roboto Sans Bold / Regular | `#10B981` | 自然で爽やかなエメラルドグリーンスタイル |
+| **Forest** | Roboto Bold / Regular | `#10B981` | 自然で爽やかなエメラルドグリーンスタイル |
 | **Slate** | JetBrains Mono Bold / Regular | `#94A3B8` | インダストリアルで落ち着いたダークメタリック |
 | **Rose Gold** | DejaVu Serif Bold / Regular | `#EC4899` | 上品なパステルローズとバイオレットのアクセント |
 

@@ -54,6 +54,10 @@
 
 ## 3. これまでのユーザー要望と対応履歴（時系列）
 
+> **注意（過去の実装履歴と現行仕様の区別）**:  
+> 本セクションに記録されている初期 Phase 0〜Phase 4 での「自由マージンスライダー」「font_scale スライダー」「連続ピクセル幅・高さ操作」「旧 Anchor / Margin」等は、開発初期の試作・改善の経緯を記録した**過去の実装履歴**です。  
+> 現在の実装仕様は Section 2（コアルール）および Section 4（主要アーキテクチャ）に記載の通り、**9分割グリッド配置（`GridPosition`）＋ 10段階固定サイズ（`SizeStage`）＋ 寸法連動フォントサイズ** へ完全移行・刷新されています。
+
 1. **基本設計確定とフェーズ分割計画の策定**:
    - 初期設計に基づき、Prototype 0 (Phase 0: サーフェス基盤) から Phase 4 (設定アプリ) までのステップバイステップ開発計画を合意。
 2. **Phase 0 — Wayland Layer Shell サーフェス基盤の実装**:
@@ -209,10 +213,12 @@
    - 都市変更時に以前の都市の遅延レスポンスが新都市の表示を上書きしないための Request Generation ID 管理は未導入。
 6. **Popup Dismissal**:
    - ポップアップのフォーカス喪失（focus loss）や領域外クリック（outside click）による自動閉鎖は、実機挙動の検証および実装仕様の確定が必要。
-7. **COSMIC ログイン自動起動時の入力領域競合 (Autostart Race Condition)**:
-   - **現象**: ログイン時の自動起動で `Layer::Bottom` がデスクトップ背景描画層（`cosmic-bg` 等）より先に生成されると、入力イベント（右クリック等）を奪われる競合が発生し、右クリックメニューが表示されなくなる。
-   - **ワークアラウンド**: 起動コマンドに 3 秒程度の遅延を設定（例: `sh -c "sleep 3 && toodle"`）。
-   - **恒久対策（ロードマップ）**: Phase 6 の systemd.user サービス（`After=graphical-session.target`）化によるセッション初期化順序の保証、または起動完了後の入力領域再適用（初期化ウェイト・`set_input_zone` の遅延再適用）。
+7. **COSMIC Autostart時の入力初期化タイミング問題**:
+   - **現象**: 実機環境において、COSMIC ログイン時の自動起動でウィジェットは表示されるものの、直後は右クリック操作が反応しない場合があることを確認。
+   - **ワークアラウンド**: 現在の実機環境で確認済みの回避策として、起動コマンドに 3 秒程度の遅延を設定（例: `sh -c "sleep 3 && toodle"`）。
+   - **推測される原因と今後の課題**:
+     - 正確な根本原因は未確定（COSMIC ログインセッション初期化やデスクトップ背景等のコンポーネントと、Toodle の Layer Surface / Input Region 初期化タイミングとの競合の可能性が推測されるが断定は避ける）。
+     - 将来的な改善・代替候補として、ウィジェット起動完了後の入力領域再適用（初期化ウェイト・`set_input_zone` の遅延再適用）や、systemd ユーザーサービス（`After=graphical-session.target`）による起動順序制御の検証を検討。
 
 ---
 
@@ -299,9 +305,9 @@ cargo build --release
    - Open-Meteo Geocoding API を用いた都市名入力からの自動座標解決。
 
 ### Phase 6 — Distribution (配布・システム統合)
-1. **Systemd User Service & Autostart 競合の根本解消**:
-   - COSMIC セッション自動起動用 `toodle.service`（`After=graphical-session.target`）の整備。
-   - ログイン時の `cosmic-bg` 初期化競合に対する根本対応（起動完了後の入力領域再適用 / 適切な起動同期）。
+1. **Autostart 起動タイミング問題の調査 & 代替改善案（Systemd User Service 等）**:
+   - ログインセッション初期化タイミング問題に対する根本調査（起動完了後の入力領域再適用 / 適切な起動同期）。
+   - 将来的な代替・改善候補としての COSMIC セッション用 systemd user サービス（`toodle.service` / `After=graphical-session.target`）の検証と整備。
 2. **Desktop Entry / Packaging**:
    - デスクトップエントリの洗練、Arch Linux (AUR) 向け PKGBUILD 作成。
 
