@@ -13,6 +13,7 @@ use cosmic::widget::button;
 pub enum PopupMessage {
     EditLayout,
     OpenSettings,
+    OpenAbout,
     OpenCalendar,
     OpenForecast,
     CalendarPrevMonth,
@@ -62,6 +63,11 @@ pub fn view_context_menu<'a, Message: From<PopupMessage> + Clone + 'static>() ->
             .padding([12, 20])
             .width(Length::Fill)
             .on_press(Message::from(PopupMessage::OpenSettings)),
+        button::standard("About Toodle")
+            .font_size(18)
+            .padding([12, 20])
+            .width(Length::Fill)
+            .on_press(Message::from(PopupMessage::OpenAbout)),
         button::destructive("Quit")
             .font_size(18)
             .padding([12, 20])

@@ -8,17 +8,26 @@ use toodle::config::theme::{COLOR_PALETTE_16, THEME_PRESETS};
 use toodle::config::{Config, TemperatureUnit};
 use toodle::display::{DetectedDisplay, clean_display_name, detect_displays};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum SettingsTab {
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum SettingsTab {
+    #[default]
     Appearance,
     Weather,
     Display,
+    About,
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct Flags {
+    pub initial_tab: SettingsTab,
+    pub showing_licenses: bool,
 }
 
 struct SettingsApp {
     core: Core,
     config: Config,
     active_tab: SettingsTab,
+    showing_licenses: bool,
     location_input: String,
     lat_input: String,
     lon_input: String,
@@ -30,6 +39,8 @@ struct SettingsApp {
 #[derive(Debug, Clone)]
 enum Message {
     SelectTab(SettingsTab),
+    ToggleLicenseView(bool),
+    OpenUrl(String),
     SetTheme(String),
     SetColor(String),
     SetTextShadow(bool),
@@ -48,7 +59,7 @@ enum Message {
 
 impl Application for SettingsApp {
     type Executor = cosmic::executor::Default;
-    type Flags = ();
+    type Flags = Flags;
     type Message = Message;
     const APP_ID: &'static str = "com.github.wammed.toodle.settings";
 
@@ -60,7 +71,7 @@ impl Application for SettingsApp {
         &mut self.core
     }
 
-    fn init(mut core: Core, _flags: Self::Flags) -> (Self, Task<Self::Message>) {
+    fn init(mut core: Core, flags: Self::Flags) -> (Self, Task<Self::Message>) {
         core.set_auto_blur(Default::default());
         let mut config = Config::load();
         // Sanitize any existing ANSI escapes from config.display.output
@@ -81,7 +92,8 @@ impl Application for SettingsApp {
         let app = Self {
             core,
             config,
-            active_tab: SettingsTab::Appearance,
+            active_tab: flags.initial_tab,
+            showing_licenses: flags.showing_licenses,
             location_input,
             lat_input,
             lon_input,
@@ -90,17 +102,33 @@ impl Application for SettingsApp {
             status_message: None,
         };
 
-        (app, Task::none())
+        let font_tasks: Vec<_> = toodle::clock::fonts::embedded_fonts()
+            .into_iter()
+            .map(|bytes| cosmic::iced::font::load(bytes).discard())
+            .collect();
+
+        (app, Task::batch(font_tasks))
     }
 
     fn update(&mut self, message: Self::Message) -> Task<Self::Message> {
         match message {
             Message::SelectTab(tab) => {
                 self.active_tab = tab;
+                self.showing_licenses = false;
                 self.status_message = None;
                 if tab == SettingsTab::Display {
                     self.detected_displays = detect_displays();
                 }
+                Task::none()
+            }
+
+            Message::ToggleLicenseView(show) => {
+                self.showing_licenses = show;
+                Task::none()
+            }
+
+            Message::OpenUrl(url) => {
+                let _ = std::process::Command::new("xdg-open").arg(url).spawn();
                 Task::none()
             }
 
@@ -269,19 +297,27 @@ impl Application for SettingsApp {
             tab_btn(SettingsTab::Appearance, "Appearance"),
             tab_btn(SettingsTab::Weather, "Weather"),
             tab_btn(SettingsTab::Display, "Display"),
+            tab_btn(SettingsTab::About, "About"),
         ]
         .spacing(8);
 
         // Tab Content
-        let tab_content: Element<Self::Message> = match self.active_tab {
-            SettingsTab::Appearance => self.view_appearance_tab(),
-            SettingsTab::Weather => self.view_weather_tab(),
-            SettingsTab::Display => self.view_display_tab(),
-        };
+        let content_view: Element<Self::Message> =
+            if self.active_tab == SettingsTab::About && self.showing_licenses {
+                self.view_license_view()
+            } else {
+                let tab_content: Element<Self::Message> = match self.active_tab {
+                    SettingsTab::Appearance => self.view_appearance_tab(),
+                    SettingsTab::Weather => self.view_weather_tab(),
+                    SettingsTab::Display => self.view_display_tab(),
+                    SettingsTab::About => self.view_about_tab(),
+                };
 
-        let scrollable_content = scrollable(tab_content)
-            .width(Length::Fill)
-            .height(Length::Fill);
+                scrollable(tab_content)
+                    .width(Length::Fill)
+                    .height(Length::Fill)
+                    .into()
+            };
 
         // Bottom Action Bar
         let status_view: Element<Self::Message> = if let Some(ref status) = self.status_message {
@@ -295,26 +331,41 @@ impl Application for SettingsApp {
             text("").size(13).into()
         };
 
-        let bottom_actions = row![
-            status_view,
+        let bottom_actions = if self.active_tab == SettingsTab::About {
             row![
-                button::suggested("Save & Apply")
-                    .padding([10, 18])
-                    .on_press(Message::Save),
-                button::standard("Reset Defaults")
-                    .padding([10, 14])
-                    .on_press(Message::ResetDefaults),
-                button::standard("Close")
-                    .padding([10, 14])
-                    .on_press(Message::Close),
+                status_view,
+                row![
+                    button::standard("Close")
+                        .padding([10, 14])
+                        .on_press(Message::Close),
+                ]
+                .spacing(10)
+                .align_y(Alignment::Center)
             ]
-            .spacing(10)
+            .spacing(16)
             .align_y(Alignment::Center)
-        ]
-        .spacing(16)
-        .align_y(Alignment::Center);
+        } else {
+            row![
+                status_view,
+                row![
+                    button::suggested("Save & Apply")
+                        .padding([10, 18])
+                        .on_press(Message::Save),
+                    button::standard("Reset Defaults")
+                        .padding([10, 14])
+                        .on_press(Message::ResetDefaults),
+                    button::standard("Close")
+                        .padding([10, 14])
+                        .on_press(Message::Close),
+                ]
+                .spacing(10)
+                .align_y(Alignment::Center)
+            ]
+            .spacing(16)
+            .align_y(Alignment::Center)
+        };
 
-        let main_layout = column![app_title, tab_bar, scrollable_content, bottom_actions,]
+        let main_layout = column![app_title, tab_bar, content_view, bottom_actions,]
             .spacing(16)
             .padding(24);
 
@@ -632,9 +683,420 @@ impl SettingsApp {
             .spacing(18)
             .into()
     }
+
+    fn view_about_tab(&self) -> Element<'_, Message> {
+        // 1. Project Basic Information
+        let app_icon = cosmic::widget::icon::from_name("com.github.wammed.toodle").size(48);
+        let app_header = row![
+            app_icon,
+            column![
+                row![
+                    text("Toodle").size(22),
+                    container(text(format!("v{}", env!("CARGO_PKG_VERSION"))).size(12))
+                        .padding([2, 8])
+                        .style(|_| container::Style {
+                            background: Some(Color::from_rgba(0.4, 0.6, 1.0, 0.2).into()),
+                            border: Border {
+                                color: Color::from_rgba(0.4, 0.6, 1.0, 0.4),
+                                width: 1.0,
+                                radius: 4.0.into(),
+                            },
+                            text_color: Some(Color::from_rgb(0.7, 0.85, 1.0)),
+                            ..Default::default()
+                        }),
+                    container(text("MIT License").size(12))
+                        .padding([2, 8])
+                        .style(|_| container::Style {
+                            background: Some(Color::from_rgba(0.2, 0.8, 0.4, 0.15).into()),
+                            border: Border {
+                                color: Color::from_rgba(0.2, 0.8, 0.4, 0.35),
+                                width: 1.0,
+                                radius: 4.0.into(),
+                            },
+                            text_color: Some(Color::from_rgb(0.5, 0.9, 0.6)),
+                            ..Default::default()
+                        }),
+                ]
+                .spacing(8)
+                .align_y(Alignment::Center),
+                text("Modern Digital Clock Widget for the System76 COSMIC Desktop Environment")
+                    .size(13),
+            ]
+            .spacing(4)
+        ]
+        .spacing(16)
+        .align_y(Alignment::Center);
+
+        let repo_row = row![
+            text("Repository:").size(13).width(Length::Fixed(90.0)),
+            button::standard("https://github.com/wammed/Toodle")
+                .padding([6, 12])
+                .on_press(Message::OpenUrl("https://github.com/wammed/Toodle".into())),
+        ]
+        .spacing(8)
+        .align_y(Alignment::Center);
+
+        let project_section = container(column![app_header, repo_row].spacing(12))
+            .width(Length::Fill)
+            .padding([14, 18])
+            .style(|_| container::Style {
+                background: Some(Color::from_rgb(0.14, 0.15, 0.20).into()),
+                border: Border {
+                    color: Color::from_rgb(0.23, 0.25, 0.34),
+                    width: 1.0,
+                    radius: 10.0.into(),
+                },
+                ..Default::default()
+            });
+
+        // 2. Bundled Assets & Licenses
+        let assets_header = column![
+            text("Bundled Fonts & Icons Licenses").size(16),
+            container(
+                text("The following fonts and vector icons are embedded directly into the binary:")
+                    .size(13),
+            )
+            .style(|_| container::Style {
+                text_color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.7)),
+                ..Default::default()
+            }),
+        ]
+        .spacing(4);
+
+        let asset_cards = column![
+            asset_card(
+                "Roboto",
+                "Display & Clock Font",
+                "Christian Robertson, Google LLC",
+                "SIL Open Font License 1.1"
+            ),
+            asset_card(
+                "JetBrains Mono NL",
+                "Monospace Font",
+                "JetBrains s.r.o.",
+                "SIL Open Font License 1.1"
+            ),
+            asset_card(
+                "Open Sans",
+                "UI Body Font",
+                "Steve Matteson",
+                "SIL Open Font License 1.1"
+            ),
+            asset_card(
+                "DejaVu Serif",
+                "Serif Font",
+                "DejaVu fonts team, Bitstream Inc.",
+                "Bitstream Vera / DejaVu License"
+            ),
+            asset_card(
+                "Meteocons",
+                "Weather Vector Icons",
+                "Bas Milius",
+                "MIT License"
+            ),
+        ]
+        .spacing(8);
+
+        // 3. Acknowledgements
+        let ack_header = text("Acknowledgements").size(16);
+        let ack_desc = container(
+            text(
+                "Built with libcosmic and the Rust open-source ecosystem.\n\
+                Special thanks to the upstream libraries and free public API services:"
+            )
+            .size(13),
+        )
+        .style(|_| container::Style {
+            text_color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.75)),
+            ..Default::default()
+        });
+
+        let libcosmic_ref = row![
+            text("• libcosmic").size(13),
+            container(text("MPL-2.0 / MIT").size(11))
+                .padding([1, 6])
+                .style(|_| container::Style {
+                    background: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.08).into()),
+                    border: Border {
+                        color: Color::from_rgba(1.0, 1.0, 1.0, 0.15),
+                        width: 1.0,
+                        radius: 4.0.into(),
+                    },
+                    ..Default::default()
+                }),
+            button::standard("GitHub ↗")
+                .padding([4, 10])
+                .on_press(Message::OpenUrl("https://github.com/pop-os/libcosmic".into())),
+        ]
+        .spacing(8)
+        .align_y(Alignment::Center);
+
+        let openmeteo_ref = row![
+            text("• Open-Meteo Weather API").size(13),
+            container(text("CC BY 4.0").size(11))
+                .padding([1, 6])
+                .style(|_| container::Style {
+                    background: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.08).into()),
+                    border: Border {
+                        color: Color::from_rgba(1.0, 1.0, 1.0, 0.15),
+                        width: 1.0,
+                        radius: 4.0.into(),
+                    },
+                    ..Default::default()
+                }),
+            button::standard("Website ↗")
+                .padding([4, 10])
+                .on_press(Message::OpenUrl("https://open-meteo.com".into())),
+        ]
+        .spacing(8)
+        .align_y(Alignment::Center);
+
+        let ack_box = container(column![ack_header, ack_desc, libcosmic_ref, openmeteo_ref].spacing(8))
+            .padding([14, 18])
+            .width(Length::Fill)
+            .style(|_| container::Style {
+                background: Some(Color::from_rgb(0.14, 0.15, 0.20).into()),
+                border: Border {
+                    color: Color::from_rgb(0.23, 0.25, 0.34),
+                    width: 1.0,
+                    radius: 10.0.into(),
+                },
+                ..Default::default()
+            });
+
+        // 4. View Full License Texts Trigger
+        let view_licenses_btn = button::suggested("View Full License Texts")
+            .padding([12, 24])
+            .on_press(Message::ToggleLicenseView(true));
+
+        let view_licenses_row = container(view_licenses_btn)
+            .width(Length::Fill)
+            .align_x(Alignment::Center)
+            .padding([8, 0]);
+
+        column![
+            project_section,
+            assets_header,
+            asset_cards,
+            ack_box,
+            view_licenses_row,
+        ]
+        .spacing(18)
+        .into()
+    }
+
+    fn view_license_view(&self) -> Element<'_, Message> {
+        let back_btn = button::standard("← Back to About")
+            .padding([8, 16])
+            .on_press(Message::ToggleLicenseView(false));
+
+        let header = row![
+            back_btn,
+            text("Full License Texts").size(18),
+        ]
+        .spacing(16)
+        .align_y(Alignment::Center);
+
+        let license_text_widget = text(FULL_LICENSE_TEXT)
+            .font(toodle::clock::fonts::FONT_MONO_REGULAR)
+            .size(12);
+
+        let scroll_area = scrollable(
+            container(license_text_widget)
+                .padding(16)
+                .width(Length::Fill),
+        )
+        .height(Length::Fill)
+        .width(Length::Fill);
+
+        let license_box = container(scroll_area)
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .style(|_| container::Style {
+                // Solid dark background
+                background: Some(Color::from_rgb(0.08, 0.09, 0.12).into()),
+                border: Border {
+                    color: Color::from_rgb(0.24, 0.26, 0.35),
+                    width: 1.5,
+                    radius: 8.0.into(),
+                },
+                ..Default::default()
+            });
+
+        column![header, license_box]
+            .spacing(12)
+            .height(Length::Fill)
+            .width(Length::Fill)
+            .into()
+    }
+}
+
+fn asset_card<'a>(
+    name: &'static str,
+    asset_type: &'static str,
+    author: &'static str,
+    license: &'static str,
+) -> Element<'a, Message> {
+    let title_line = row![
+        text(name).size(15),
+        container(text(asset_type).size(11))
+            .padding([2, 6])
+            .style(|_| container::Style {
+                background: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.08).into()),
+                border: Border {
+                    color: Color::from_rgba(1.0, 1.0, 1.0, 0.15),
+                    width: 1.0,
+                    radius: 4.0.into(),
+                },
+                text_color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.7)),
+                ..Default::default()
+            }),
+    ]
+    .spacing(8)
+    .align_y(Alignment::Center);
+
+    let details_line = row![
+        container(text(author).size(13))
+            .width(Length::Fill)
+            .style(|_| container::Style {
+                text_color: Some(Color::from_rgba(1.0, 1.0, 1.0, 0.75)),
+                ..Default::default()
+            }),
+        container(text(license).size(12))
+            .padding([2, 8])
+            .style(|_| container::Style {
+                background: Some(Color::from_rgba(0.2, 0.5, 0.9, 0.2).into()),
+                border: Border {
+                    color: Color::from_rgba(0.3, 0.6, 1.0, 0.35),
+                    width: 1.0,
+                    radius: 4.0.into(),
+                },
+                text_color: Some(Color::from_rgb(0.6, 0.85, 1.0)),
+                ..Default::default()
+            }),
+    ]
+    .spacing(12)
+    .align_y(Alignment::Center);
+
+    container(column![title_line, details_line].spacing(6))
+        .width(Length::Fill)
+        .padding([10, 14])
+        .style(|_| container::Style {
+            background: Some(Color::from_rgb(0.15, 0.16, 0.21).into()),
+            border: Border {
+                color: Color::from_rgb(0.24, 0.26, 0.35),
+                width: 1.0,
+                radius: 8.0.into(),
+            },
+            ..Default::default()
+        })
+        .into()
+}
+
+const FULL_LICENSE_TEXT: &str = concat!(
+    "================================================================================\n",
+    "  Toodle - MIT License\n",
+    "================================================================================\n\n",
+    include_str!("../../LICENSE"),
+    "\n\n================================================================================\n",
+    "  Roboto, JetBrains Mono NL, Open Sans - SIL Open Font License 1.1\n",
+    "================================================================================\n\n",
+    include_str!("../../THIRD_PARTY_LICENSES/ROBOTO_OFL.txt"),
+    "\n\n================================================================================\n",
+    "  DejaVu Serif - Bitstream Vera / DejaVu Fonts License\n",
+    "================================================================================\n\n",
+    include_str!("../../THIRD_PARTY_LICENSES/DEJAVU_LICENSE.txt"),
+    "\n\n================================================================================\n",
+    "  Meteocons Weather Icons - MIT License (Bas Milius)\n",
+    "================================================================================\n\n",
+    include_str!("../../THIRD_PARTY_LICENSES/METEOCONS_LICENSE.txt"),
+    "\n\n================================================================================\n\n",
+    "For third-party Rust crates and dependencies statically linked at build time,\n",
+    "please refer to their respective upstream source repositories or the system\n",
+    "package license documentation.\n"
+);
+
+pub fn parse_flags_from_args<I, S>(args: I) -> Flags
+where
+    I: IntoIterator<Item = S>,
+    S: AsRef<str>,
+{
+    let mut flags = Flags::default();
+    let mut iter = args.into_iter();
+    while let Some(arg) = iter.next() {
+        if arg.as_ref() == "--tab" {
+            if let Some(val) = iter.next() {
+                match val.as_ref().to_ascii_lowercase().as_str() {
+                    "about" => {
+                        flags.initial_tab = SettingsTab::About;
+                        flags.showing_licenses = false;
+                    }
+                    "license" | "licenses" => {
+                        flags.initial_tab = SettingsTab::About;
+                        flags.showing_licenses = true;
+                    }
+                    "appearance" => flags.initial_tab = SettingsTab::Appearance,
+                    "weather" => flags.initial_tab = SettingsTab::Weather,
+                    "display" => flags.initial_tab = SettingsTab::Display,
+                    _ => {}
+                }
+            }
+        }
+    }
+    flags
 }
 
 fn main() -> cosmic::iced::Result {
     tracing_subscriber::fmt::init();
-    cosmic::app::run::<SettingsApp>(Settings::default().size(Size::new(720.0, 780.0)), ())
+    let flags = parse_flags_from_args(std::env::args().skip(1));
+    cosmic::app::run::<SettingsApp>(Settings::default().size(Size::new(720.0, 780.0)), flags)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_flags_from_args() {
+        let f1 = parse_flags_from_args(vec!["--tab", "about"]);
+        assert_eq!(f1.initial_tab, SettingsTab::About);
+        assert!(!f1.showing_licenses);
+
+        let f2 = parse_flags_from_args(vec!["--tab", "About"]);
+        assert_eq!(f2.initial_tab, SettingsTab::About);
+        assert!(!f2.showing_licenses);
+
+        let f3 = parse_flags_from_args(vec!["--tab", "license"]);
+        assert_eq!(f3.initial_tab, SettingsTab::About);
+        assert!(f3.showing_licenses);
+
+        let f4 = parse_flags_from_args(vec!["--tab", "licenses"]);
+        assert_eq!(f4.initial_tab, SettingsTab::About);
+        assert!(f4.showing_licenses);
+
+        let f5 = parse_flags_from_args(vec!["--tab", "weather"]);
+        assert_eq!(f5.initial_tab, SettingsTab::Weather);
+
+        let f6 = parse_flags_from_args(vec!["--tab", "display"]);
+        assert_eq!(f6.initial_tab, SettingsTab::Display);
+
+        let f7 = parse_flags_from_args(vec!["--tab", "appearance"]);
+        assert_eq!(f7.initial_tab, SettingsTab::Appearance);
+
+        let f8 = parse_flags_from_args(vec!["--tab", "unknown"]);
+        assert_eq!(f8.initial_tab, SettingsTab::Appearance);
+
+        let f9 = parse_flags_from_args(Vec::<String>::new());
+        assert_eq!(f9.initial_tab, SettingsTab::Appearance);
+    }
+
+    #[test]
+    fn test_full_license_text_contains_all_components() {
+        assert!(FULL_LICENSE_TEXT.contains("Toodle - MIT License"));
+        assert!(FULL_LICENSE_TEXT.contains("Copyright (c) 2026 wammed"));
+        assert!(FULL_LICENSE_TEXT.contains("SIL OPEN FONT LICENSE Version 1.1"));
+        assert!(FULL_LICENSE_TEXT.contains("Bitstream Vera"));
+        assert!(FULL_LICENSE_TEXT.contains("Bas Milius"));
+        assert!(FULL_LICENSE_TEXT.contains("statically linked at build time"));
+    }
 }

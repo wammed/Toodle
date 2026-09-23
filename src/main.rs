@@ -375,17 +375,17 @@ impl Application for ToodleApp {
                     tasks.push(layer_cmd::destroy_layer_surface(popup_id));
                 }
                 self.active_popup = None;
-                let spawn_res = std::env::current_exe()
-                    .ok()
-                    .and_then(|p| p.parent().map(|dir| dir.join("toodle-settings")))
-                    .filter(|p| p.exists())
-                    .map(|exe| std::process::Command::new(exe).spawn())
-                    .unwrap_or_else(|| std::process::Command::new("toodle-settings").spawn());
+                spawn_settings(None);
+                Task::batch(tasks)
+            }
 
-                if let Err(e) = spawn_res {
-                    tracing::warn!("Failed to launch toodle-settings: {}", e);
+            Message::Popup(PopupMessage::OpenAbout) => {
+                let mut tasks = Vec::new();
+                if let Some(popup_id) = self.popup_surface_id.take() {
+                    tasks.push(layer_cmd::destroy_layer_surface(popup_id));
                 }
-
+                self.active_popup = None;
+                spawn_settings(Some("about"));
                 Task::batch(tasks)
             }
 
@@ -816,6 +816,23 @@ impl Application for ToodleApp {
         } else {
             cosmic::widget::text("").into()
         }
+    }
+}
+
+fn spawn_settings(tab: Option<&str>) {
+    let mut cmd = std::env::current_exe()
+        .ok()
+        .and_then(|p| p.parent().map(|dir| dir.join("toodle-settings")))
+        .filter(|p| p.exists())
+        .map(std::process::Command::new)
+        .unwrap_or_else(|| std::process::Command::new("toodle-settings"));
+
+    if let Some(tab_name) = tab {
+        cmd.arg("--tab").arg(tab_name);
+    }
+
+    if let Err(e) = cmd.spawn() {
+        tracing::warn!("Failed to launch toodle-settings: {}", e);
     }
 }
 
