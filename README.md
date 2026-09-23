@@ -16,9 +16,9 @@
 ## Highlights
 
 - **Wayland Native**: Built specifically for COSMIC Desktop with `libcosmic` on `wlr-layer-shell`.
-- **Zero-Flicker Surface Management**: Pinned to `Layer::Bottom` behind regular windows, with a rectangular `content_bounds` input zone that lets background clicks pass through seamlessly to desktop wallpaper and icons.
+- **Dynamic Multi-Monitor Management (`OutputManager`)**: Automatically discovers connected Wayland outputs from `cosmic-randr`, seamlessly binding to a configured display (e.g. `"DP-1"`) or safely falling back to the primary/first available output. Isolates screen dimensions per display and handles hot-plug reconnection dynamically.
 - **Accurate Sub-Second Clock**: High-precision async tick stream synchronized to the exact microsecond boundary of each upcoming second.
-- **2-Tier Cached Weather**: Live weather and 7-day forecast powered by Open-Meteo REST API, with 30-minute / 3-hour local persistent caching, coordinate verification, and offline fallback.
+- **Robust 2-Tier Cached Weather**: Live weather and 7-day forecast powered by Open-Meteo REST API, with 30-minute / 3-hour local persistent caching, strict JSON response validation, coordinate bounds checking, clock-skew protection, and offline fallback.
 - **Independent Popup Surfaces (`Layer::Top`)**:
   - Right-click Context Menu (340 x 380) with centered 18px actions.
   - Full Monthly Calendar (680 x 720) with smooth month navigation and today highlight.
@@ -26,9 +26,9 @@
   - Solid dark styling for consistent visibility across any desktop wallpaper.
 - **9-Zone Display Grid & 10 Discrete Size Stages (WQHD-Ready)**: Intuitive 3×3 screen placement (`TopLeft` through `BottomRight`) paired with 10 size stages (280px to 2060px) tuned for screens up to WQHD (2560×1440). Font sizes (time, date) and vector weather icons synchronize 1:1 with window dimensions, with ample vertical headroom preventing any bottom clipping of text or weather icons.
 - **Two-Surface Edit Layout Mode**: An independent `Layer::Top` Edit Layout Panel (featuring 9-zone position buttons and 10 size selector buttons) works alongside the running `Layer::Bottom` widget, allowing instant in-place layout tuning without surface recreation or redraw flicker.
-- **Dedicated Settings App (`toodle-settings`)**: Native XDG Toplevel application (720 x 780, solid dark background) with 4 tabs (Appearance, Layout, Weather, Display), real-time atomic auto-save, 10 theme presets, 16 curated colors, 9-zone layout and 10-stage size selectors, and quick city presets.
+- **Dedicated Settings App (`toodle-settings`)**: Native XDG Toplevel application (720 x 780, solid dark background) with 4 tabs (Appearance, Layout, Weather, Display), real-time atomic auto-save with error notifications, 10 theme presets, 16 curated colors, 9-zone layout and 10-stage size selectors, and quick city presets.
 - **Decoupled Build & Local Install Structure**: `cargo build --release` strictly compiles the Rust binaries without touching the user's home directory. Local installation to `$HOME/.local/bin` is handled via explicit execution of `./tools/install-local.sh`, establishing a clean architecture for future distribution packaging (.deb, RPM, AUR).
-- **Live Inotify Hot-Reloading**: Automatically updates running widgets in real-time when `~/.config/toodle/config.toml` changes (25ms response).
+- **Live Inotify Hot-Reloading & Migration**: Automatically updates running widgets in real-time when `~/.config/toodle/config.toml` changes (50ms debounced response). Older configuration files are automatically migrated and rewritten to disk in modern clean format. Active in-progress edits are protected from unexpected config reloads.
 - **100% Embedded Fonts & Color Vector Weather Icons**: Includes Roboto, JetBrains Mono, DejaVu Serif, and Open Sans statically embedded into the binary via `include_bytes!`. Weather condition icons are rendered using embedded Bas Milius Meteocons color SVG assets (`resources/icons/meteocons/`, MIT License) rather than monochrome font glyphs or Unicode emojis, ensuring vibrant, crisp, modern visual representation across all display scales without external dependencies.
 
 ---
@@ -147,7 +147,7 @@ Settings are saved in `~/.config/toodle/config.toml`:
 
 ```toml
 [display]
-output = "" # Target Wayland output (e.g. "DP-1", empty defaults to active output)
+output = "" # Target Wayland output (e.g. "DP-1", empty defaults to primary or first available output)
 
 [layout]
 grid_position = "TopRight" # 9 zones: TopLeft, TopCenter, TopRight, MiddleLeft, Center, MiddleRight, BottomLeft, BottomCenter, BottomRight
@@ -166,10 +166,10 @@ temperature_unit = "Celsius" # Celsius, Fahrenheit
 ```
 
 > **Automatic Config Migration**:
-> If an older `config.toml` containing legacy layout fields (`anchor`, `margin_x`, `margin_y`, `width`, `height`) or `font_scale` is loaded, Toodle automatically and deterministically migrates it to the closest `grid_position` and `size_stage`, preserving your preferred position and sizing before saving the clean modern structure.
+> If an older `config.toml` containing legacy layout fields (`anchor`, `margin_x`, `margin_y`, `width`, `height`) or `font_scale` is loaded, Toodle automatically and deterministically migrates it to the closest `grid_position` and `size_stage`, preserving your preferred position and sizing before immediately rewriting the clean modern structure back to disk.
 
 > **Display & Multi-Monitor Note**:
-> Single-display geometry across standard resolutions (from 640×360 up to WQHD 2560×1440 and 4K 3840×2160) is verified through comprehensive automated geometry unit testing. However, multi-monitor configurations—especially those with differing mixed resolutions or per-monitor fractional scaling—have not yet been sufficiently validated on physical hardware and remain an unverified item until dedicated test hardware is available.
+> Single-display geometry across standard resolutions (from 640×360 up to WQHD 2560×1440 and 4K 3840×2160) is verified through comprehensive automated geometry unit testing. The `OutputManager` state machine manages display binding, connector name matching, and primary display fallback. However, multi-monitor configurations—especially those with differing mixed resolutions or per-monitor fractional scaling—have not yet been sufficiently validated on physical hardware and remain an unverified item until dedicated test hardware is available.
 
 ---
 

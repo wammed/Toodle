@@ -42,17 +42,28 @@ impl WeatherService {
 
     /// Fetch weather honoring cache and offline fallback (Design Doc Sec 13 & 14)
     pub async fn get_weather(&self, lat: f64, lon: f64) -> Result<WeatherData, WeatherError> {
+        if !(-90.0..=90.0).contains(&lat)
+            || !(-180.0..=180.0).contains(&lon)
+            || lat.is_nan()
+            || lon.is_nan()
+        {
+            return Err(WeatherError::Parse(format!(
+                "Invalid coordinates: lat={}, lon={}. Latitude must be [-90, 90] and longitude [-180, 180].",
+                lat, lon
+            )));
+        }
+
         let cache_p = self.cache_path();
 
         // 1. Check local persistent cache
-        if let Some(cached) = WeatherCache::load_from(&cache_p) {
-            if cached.is_location_match(lat, lon) && cached.is_current_valid() {
-                info!(
-                    "Using fresh weather cache (< 30 minutes old) for ({}, {})",
-                    lat, lon
-                );
-                return Ok(cached.data);
-            }
+        if let Some(cached) = WeatherCache::load_from(&cache_p)
+            .filter(|c| c.is_location_match(lat, lon) && c.is_current_valid())
+        {
+            info!(
+                "Using fresh weather cache (< 30 minutes old) for ({}, {})",
+                lat, lon
+            );
+            return Ok(cached.data);
         }
 
         // 2. Fetch fresh weather from provider
@@ -68,14 +79,14 @@ impl WeatherService {
                     err
                 );
                 // 3. Fallback to last available cache if available for this location (Sec 13)
-                if let Some(stale) = WeatherCache::load_from(&cache_p) {
-                    if stale.is_location_match(lat, lon) {
-                        info!(
-                            "Using stale weather cache as offline fallback for ({}, {})",
-                            lat, lon
-                        );
-                        return Ok(stale.data);
-                    }
+                if let Some(stale) = WeatherCache::load_from(&cache_p)
+                    .filter(|s| s.is_location_match(lat, lon))
+                {
+                    info!(
+                        "Using stale weather cache as offline fallback for ({}, {})",
+                        lat, lon
+                    );
+                    return Ok(stale.data);
                 }
                 // 4. No cache available -> Weather unavailable (Sec 13)
                 Err(err)
@@ -195,5 +206,30 @@ mod tests {
 
         let _ = std::fs::remove_file(&temp_cache);
         let _ = std::fs::remove_dir(&temp_dir);
+    }
+
+    #[tokio::test]
+    async fn test_weather_service_invalid_coordinates() {
+        let service = WeatherService::new();
+        // Lat out of range
+        let err_lat = service.get_weather(95.0, 139.69).await.unwrap_err();
+        match err_lat {
+            WeatherError::Parse(msg) => assert!(msg.contains("Invalid coordinates"), "{msg}"),
+            _ => panic!("Expected WeatherError::Parse"),
+        }
+
+        // Lon out of range
+        let err_lon = service.get_weather(35.0, 190.0).await.unwrap_err();
+        match err_lon {
+            WeatherError::Parse(msg) => assert!(msg.contains("Invalid coordinates"), "{msg}"),
+            _ => panic!("Expected WeatherError::Parse"),
+        }
+
+        // NaN
+        let err_nan = service.get_weather(f64::NAN, 0.0).await.unwrap_err();
+        match err_nan {
+            WeatherError::Parse(msg) => assert!(msg.contains("Invalid coordinates"), "{msg}"),
+            _ => panic!("Expected WeatherError::Parse"),
+        }
     }
 }

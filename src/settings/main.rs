@@ -139,19 +139,19 @@ impl Application for SettingsApp {
                 } else {
                     self.config.appearance.theme = theme_name;
                 }
-                let _ = self.config.save();
+                self.save_config_with_status(None);
                 Task::none()
             }
 
             Message::SetColor(hex) => {
                 self.config.appearance.color = hex;
-                let _ = self.config.save();
+                self.save_config_with_status(None);
                 Task::none()
             }
 
             Message::SetTextShadow(enabled) => {
                 self.config.appearance.text_shadow = enabled;
-                let _ = self.config.save();
+                self.save_config_with_status(None);
                 Task::none()
             }
 
@@ -163,7 +163,10 @@ impl Application for SettingsApp {
 
             Message::SetLatitude(lat_str) => {
                 self.lat_input = lat_str.clone();
-                if let Ok(val) = lat_str.parse::<f64>() {
+                if let Ok(val) = lat_str.parse::<f64>()
+                    && (-90.0..=90.0).contains(&val)
+                    && !val.is_nan()
+                {
                     self.config.weather.latitude = val;
                 }
                 Task::none()
@@ -171,7 +174,10 @@ impl Application for SettingsApp {
 
             Message::SetLongitude(lon_str) => {
                 self.lon_input = lon_str.clone();
-                if let Ok(val) = lon_str.parse::<f64>() {
+                if let Ok(val) = lon_str.parse::<f64>()
+                    && (-180.0..=180.0).contains(&val)
+                    && !val.is_nan()
+                {
                     self.config.weather.longitude = val;
                 }
                 Task::none()
@@ -179,7 +185,7 @@ impl Application for SettingsApp {
 
             Message::SetTemperatureUnit(unit) => {
                 self.config.weather.temperature_unit = unit;
-                let _ = self.config.save();
+                self.save_config_with_status(None);
                 Task::none()
             }
 
@@ -193,11 +199,10 @@ impl Application for SettingsApp {
                     self.config.display.output = Some(cleaned.clone());
                     cleaned
                 };
-                let _ = self.config.save();
-                self.status_message = Some(format!(
+                self.save_config_with_status(Some(format!(
                     "Target display set to '{}'. Widget relocated live!",
                     display_desc
-                ));
+                )));
                 Task::none()
             }
 
@@ -214,40 +219,46 @@ impl Application for SettingsApp {
                 self.config.weather.location_name = name.to_string();
                 self.config.weather.latitude = lat;
                 self.config.weather.longitude = lon;
-                let _ = self.config.save();
-                self.status_message = Some(format!(
+                self.save_config_with_status(Some(format!(
                     "Location updated to {}. Live weather updating!",
                     name
-                ));
+                )));
                 Task::none()
             }
 
             Message::ApplyLocation => {
-                if let Ok(val) = self.lat_input.parse::<f64>() {
-                    self.config.weather.latitude = val;
+                let lat_res = self.lat_input.parse::<f64>();
+                let lon_res = self.lon_input.parse::<f64>();
+
+                match (lat_res, lon_res) {
+                    (Ok(lat), Ok(lon))
+                        if (-90.0..=90.0).contains(&lat)
+                            && (-180.0..=180.0).contains(&lon)
+                            && !lat.is_nan()
+                            && !lon.is_nan() =>
+                    {
+                        self.config.weather.latitude = lat;
+                        self.config.weather.longitude = lon;
+                        self.config.weather.location_name = self.location_input.clone();
+                        self.save_config_with_status(Some(format!(
+                            "Location applied: {}. Live weather updating!",
+                            self.config.weather.location_name
+                        )));
+                    }
+                    _ => {
+                        self.status_message = Some(
+                            "Invalid coordinates: Latitude must be between -90 and 90, Longitude between -180 and 180."
+                                .to_string(),
+                        );
+                    }
                 }
-                if let Ok(val) = self.lon_input.parse::<f64>() {
-                    self.config.weather.longitude = val;
-                }
-                self.config.weather.location_name = self.location_input.clone();
-                let _ = self.config.save();
-                self.status_message = Some(format!(
-                    "Location applied: {}. Live weather updating!",
-                    self.config.weather.location_name
-                ));
                 Task::none()
             }
 
             Message::Save => {
-                match self.config.save() {
-                    Ok(_) => {
-                        self.status_message =
-                            Some("Configuration saved. Active widget reloaded live!".into());
-                    }
-                    Err(e) => {
-                        self.status_message = Some(format!("Error saving config: {}", e));
-                    }
-                }
+                self.save_config_with_status(Some(
+                    "Configuration saved. Active widget reloaded live!".into(),
+                ));
                 Task::none()
             }
 
@@ -257,8 +268,9 @@ impl Application for SettingsApp {
                 self.lat_input = self.config.weather.latitude.to_string();
                 self.lon_input = self.config.weather.longitude.to_string();
                 self.output_input = self.config.display.output.clone().unwrap_or_default();
-                let _ = self.config.save();
-                self.status_message = Some("Settings reset to defaults and applied live!".into());
+                self.save_config_with_status(Some(
+                    "Settings reset to defaults and applied live!".into(),
+                ));
                 Task::none()
             }
 
@@ -381,6 +393,20 @@ impl Application for SettingsApp {
 }
 
 impl SettingsApp {
+    fn save_config_with_status(&mut self, success_msg: Option<String>) {
+        match self.config.save() {
+            Ok(()) => {
+                if let Some(msg) = success_msg {
+                    self.status_message = Some(msg);
+                }
+            }
+            Err(e) => {
+                tracing::error!("Failed to save configuration: {}", e);
+                self.status_message = Some(format!("Failed to save configuration: {}", e));
+            }
+        }
+    }
+
     fn view_appearance_tab(&self) -> Element<'_, Message> {
         let cur_theme = &self.config.appearance.theme;
         let cur_color = &self.config.appearance.color;
@@ -1024,23 +1050,25 @@ where
     let mut flags = Flags::default();
     let mut iter = args.into_iter();
     while let Some(arg) = iter.next() {
-        if arg.as_ref() == "--tab" {
-            if let Some(val) = iter.next() {
-                match val.as_ref().to_ascii_lowercase().as_str() {
-                    "about" => {
-                        flags.initial_tab = SettingsTab::About;
-                        flags.showing_licenses = false;
-                    }
-                    "license" | "licenses" => {
-                        flags.initial_tab = SettingsTab::About;
-                        flags.showing_licenses = true;
-                    }
-                    "appearance" => flags.initial_tab = SettingsTab::Appearance,
-                    "weather" => flags.initial_tab = SettingsTab::Weather,
-                    "display" => flags.initial_tab = SettingsTab::Display,
-                    _ => {}
-                }
+        if arg.as_ref() != "--tab" {
+            continue;
+        }
+        let Some(val) = iter.next() else {
+            continue;
+        };
+        match val.as_ref().to_ascii_lowercase().as_str() {
+            "about" => {
+                flags.initial_tab = SettingsTab::About;
+                flags.showing_licenses = false;
             }
+            "license" | "licenses" => {
+                flags.initial_tab = SettingsTab::About;
+                flags.showing_licenses = true;
+            }
+            "appearance" => flags.initial_tab = SettingsTab::Appearance,
+            "weather" => flags.initial_tab = SettingsTab::Weather,
+            "display" => flags.initial_tab = SettingsTab::Display,
+            _ => {}
         }
     }
     flags

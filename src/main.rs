@@ -17,7 +17,7 @@ use tracing::info;
 
 use std::sync::Arc;
 use toodle::config::Config;
-use toodle::display::clean_display_name;
+use toodle::display::{OutputManager, ResolvedOutput, clean_display_name};
 use toodle::popup::{self, PopupMessage};
 use toodle::weather::{
     WeatherCache, WeatherData, WeatherError, WeatherService, weather_update_stream,
@@ -32,12 +32,6 @@ enum ActivePopup {
     Forecast,
 }
 
-#[derive(Debug, Clone)]
-struct OutputEntry {
-    name: Option<String>,
-    output: WlOutput,
-}
-
 struct ToodleApp {
     core: Core,
     config: Config,
@@ -49,10 +43,7 @@ struct ToodleApp {
     popup_surface_id: Option<SurfaceId>,
     active_popup: Option<ActivePopup>,
     edit_panel_surface_id: Option<SurfaceId>,
-    outputs: Vec<OutputEntry>,
-    current_assigned_output: Option<String>,
-    screen_w: u32,
-    screen_h: u32,
+    output_manager: OutputManager,
 }
 
 #[derive(Debug, Clone)]
@@ -87,34 +78,34 @@ impl From<EditMessage> for Message {
 }
 
 impl ToodleApp {
-    fn get_target_iced_output(&self) -> IcedOutput {
-        if let Some(target) = &self.config.display.output {
-            let clean_target = clean_display_name(target);
-            if !clean_target.is_empty() {
-                for entry in &self.outputs {
-                    if let Some(name) = &entry.name {
-                        let clean_entry_name = clean_display_name(name);
-                        if clean_entry_name.eq_ignore_ascii_case(&clean_target) {
-                            return IcedOutput::Output(entry.output.clone());
-                        }
-                    }
-                }
-            }
+    fn target_iced_output(&self) -> IcedOutput {
+        match self.output_manager.resolve(self.config.display.output.as_deref()) {
+            ResolvedOutput::Specific { output, .. } => IcedOutput::Output(output),
+            ResolvedOutput::Active { .. } => IcedOutput::Active,
         }
-        IcedOutput::Active
+    }
+
+    fn target_screen_dimensions(&self) -> (u32, u32) {
+        self.output_manager
+            .target_logical_size(self.config.display.output.as_deref())
     }
 
     fn recreate_widget(&mut self) -> Task<Message> {
         let old_id = self.widget_surface_id;
         let new_id = SurfaceId::unique();
         self.widget_surface_id = new_id;
-        self.current_assigned_output = self.config.display.output.clone();
 
-        let (anchor, (top, right, bottom, left), (w, h), _scale) = self
-            .config
-            .layout
-            .calculate_geometry(self.screen_w, self.screen_h);
-        let target_output = self.get_target_iced_output();
+        let (resolved, _) = self
+            .output_manager
+            .update_target(self.config.display.output.as_deref());
+        let (target_w, target_h) = resolved.logical_size();
+        let (anchor, (top, right, bottom, left), (w, h), _scale) =
+            self.config.layout.calculate_geometry(target_w, target_h);
+
+        let target_output = match &resolved {
+            ResolvedOutput::Specific { output, .. } => IcedOutput::Output(output.clone()),
+            ResolvedOutput::Active { .. } => IcedOutput::Active,
+        };
 
         let widget_settings = SctkLayerSurfaceSettings {
             id: new_id,
@@ -136,8 +127,8 @@ impl ToodleApp {
         };
 
         info!(
-            "Recreating widget layer surface on target output {:?}",
-            self.config.display.output
+            "Recreating widget layer surface on target output {:?} (resolved: {:?})",
+            self.config.display.output, resolved
         );
 
         let mut tasks = vec![
@@ -178,16 +169,24 @@ impl Application for ToodleApp {
         let config = Config::load();
         let widget_surface_id = SurfaceId::unique();
 
-        let (screen_w, screen_h) = toodle::display::detect_primary_resolution();
+        let fallback_res = toodle::display::detect_primary_resolution();
+        let mut output_manager: OutputManager<WlOutput> = OutputManager::new(fallback_res);
+        let (initial_resolved, _) = output_manager.update_target(config.display.output.as_deref());
+        let (screen_w, screen_h) = initial_resolved.logical_size();
         let (anchor, (top, right, bottom, left), (w, h), _scale) =
             config.layout.calculate_geometry(screen_w, screen_h);
+        let target_output = match &initial_resolved {
+            ResolvedOutput::Specific { output, .. } => IcedOutput::Output(output.clone()),
+            ResolvedOutput::Active { .. } => IcedOutput::Active,
+        };
+
         let widget_settings = SctkLayerSurfaceSettings {
             id: widget_surface_id,
             layer: Layer::Bottom,
             keyboard_interactivity: KeyboardInteractivity::None,
             input_zone: Some(widget::content_bounds(&config)),
             anchor,
-            output: IcedOutput::Active,
+            output: target_output,
             namespace: "toodle-widget".to_string(),
             margin: IcedMargin {
                 top,
@@ -238,10 +237,7 @@ impl Application for ToodleApp {
             popup_surface_id: None,
             active_popup: None,
             edit_panel_surface_id: None,
-            outputs: Vec::new(),
-            current_assigned_output: None,
-            screen_w,
-            screen_h,
+            output_manager,
         };
 
         (app, initial_tasks)
@@ -293,10 +289,11 @@ impl Application for ToodleApp {
                 self.popup_surface_id = Some(new_popup_id);
                 self.active_popup = Some(ActivePopup::ContextMenu);
 
+                let (screen_w, screen_h) = self.target_screen_dimensions();
                 let (w_anchor, (w_top, w_right, w_bottom, w_left), _, _) = self
                     .config
                     .layout
-                    .calculate_geometry(self.screen_w, self.screen_h);
+                    .calculate_geometry(screen_w, screen_h);
                 let popup_margin = IcedMargin {
                     top: w_top + 16,
                     right: w_right + 16,
@@ -310,7 +307,7 @@ impl Application for ToodleApp {
                     keyboard_interactivity: KeyboardInteractivity::OnDemand,
                     input_zone: None,
                     anchor: w_anchor,
-                    output: self.get_target_iced_output(),
+                    output: self.target_iced_output(),
                     namespace: "toodle-popup".to_string(),
                     margin: popup_margin,
                     size: Some((Some(340), Some(380))),
@@ -330,10 +327,11 @@ impl Application for ToodleApp {
                 self.active_popup = None;
 
                 // Initialize Edit State with current layout and screen size
+                let (screen_w, screen_h) = self.target_screen_dimensions();
                 self.state = WidgetState::Edit(EditState::new(
                     self.config.layout.clone(),
-                    self.screen_w,
-                    self.screen_h,
+                    screen_w,
+                    screen_h,
                 ));
 
                 // Open independent Edit Panel on Layer::Top
@@ -355,7 +353,7 @@ impl Application for ToodleApp {
                     keyboard_interactivity: KeyboardInteractivity::OnDemand,
                     input_zone: None,
                     anchor: LayerAnchor::TOP | LayerAnchor::RIGHT,
-                    output: self.get_target_iced_output(),
+                    output: self.target_iced_output(),
                     namespace: "toodle-edit-panel".to_string(),
                     margin: panel_margin,
                     size: Some((Some(460), Some(490))),
@@ -399,10 +397,11 @@ impl Application for ToodleApp {
                 self.popup_surface_id = Some(new_popup_id);
                 self.active_popup = Some(ActivePopup::Calendar(popup::CalendarState::new()));
 
+                let (screen_w, screen_h) = self.target_screen_dimensions();
                 let (w_anchor, (w_top, w_right, w_bottom, w_left), _, _) = self
                     .config
                     .layout
-                    .calculate_geometry(self.screen_w, self.screen_h);
+                    .calculate_geometry(screen_w, screen_h);
                 let popup_margin = IcedMargin {
                     top: w_top + 16,
                     right: w_right + 16,
@@ -416,7 +415,7 @@ impl Application for ToodleApp {
                     keyboard_interactivity: KeyboardInteractivity::OnDemand,
                     input_zone: None,
                     anchor: w_anchor,
-                    output: self.get_target_iced_output(),
+                    output: self.target_iced_output(),
                     namespace: "toodle-calendar".to_string(),
                     margin: popup_margin,
                     size: Some((Some(680), Some(720))),
@@ -438,10 +437,11 @@ impl Application for ToodleApp {
                 self.popup_surface_id = Some(new_popup_id);
                 self.active_popup = Some(ActivePopup::Forecast);
 
+                let (screen_w, screen_h) = self.target_screen_dimensions();
                 let (w_anchor, (w_top, w_right, w_bottom, w_left), _, _) = self
                     .config
                     .layout
-                    .calculate_geometry(self.screen_w, self.screen_h);
+                    .calculate_geometry(screen_w, screen_h);
                 let popup_margin = IcedMargin {
                     top: w_top + 16,
                     right: w_right + 16,
@@ -455,7 +455,7 @@ impl Application for ToodleApp {
                     keyboard_interactivity: KeyboardInteractivity::OnDemand,
                     input_zone: None,
                     anchor: w_anchor,
-                    output: self.get_target_iced_output(),
+                    output: self.target_iced_output(),
                     namespace: "toodle-forecast".to_string(),
                     margin: popup_margin,
                     size: Some((Some(680), Some(720))),
@@ -505,7 +505,11 @@ impl Application for ToodleApp {
                 let mut tasks = Vec::new();
                 if let WidgetState::Edit(edit_state) = &self.state {
                     self.config.layout = edit_state.layout.clone();
-                    let _ = self.config.save();
+                    if let Err(e) = self.config.save() {
+                        tracing::error!("Failed to save layout configuration: {}", e);
+                    } else {
+                        info!("Layout configuration saved successfully");
+                    }
                 }
 
                 if let Some(panel_id) = self.edit_panel_surface_id.take() {
@@ -533,10 +537,11 @@ impl Application for ToodleApp {
                 self.active_popup = None;
 
                 self.state = WidgetState::Normal;
+                let (screen_w, screen_h) = self.target_screen_dimensions();
                 let (anchor, (top, right, bottom, left), (w, h), _) = self
                     .config
                     .layout
-                    .calculate_geometry(self.screen_w, self.screen_h);
+                    .calculate_geometry(screen_w, screen_h);
 
                 tasks.push(layer_cmd::set_anchor(self.widget_surface_id, anchor));
                 tasks.push(layer_cmd::set_margin(
@@ -560,13 +565,14 @@ impl Application for ToodleApp {
             }
 
             Message::Edit(msg) => {
+                let (screen_w, screen_h) = self.target_screen_dimensions();
                 if let WidgetState::Edit(edit_state) = &mut self.state {
                     match msg {
                         EditMessage::SetGridPosition(pos) => {
                             edit_state.update(EditMessage::SetGridPosition(pos));
                             let (anchor, (top, right, bottom, left), _size, _scale) = edit_state
                                 .layout
-                                .calculate_geometry(self.screen_w, self.screen_h);
+                                .calculate_geometry(screen_w, screen_h);
                             Task::batch(vec![
                                 layer_cmd::set_anchor(self.widget_surface_id, anchor),
                                 layer_cmd::set_margin(
@@ -582,7 +588,7 @@ impl Application for ToodleApp {
                             edit_state.update(EditMessage::SetSizeStage(stage));
                             let (anchor, (top, right, bottom, left), (w, h), _scale) = edit_state
                                 .layout
-                                .calculate_geometry(self.screen_w, self.screen_h);
+                                .calculate_geometry(screen_w, screen_h);
                             Task::batch(vec![
                                 layer_cmd::set_size(self.widget_surface_id, Some(w), Some(h)),
                                 layer_cmd::set_anchor(self.widget_surface_id, anchor),
@@ -622,7 +628,16 @@ impl Application for ToodleApp {
                         || (self.config.weather.longitude - new_config.weather.longitude).abs()
                             > 0.0001;
 
-                self.config = new_config;
+                // Handle edit mode conflict: if user is currently editing layout, preserve their in-progress layout
+                let in_edit_mode = matches!(self.state, WidgetState::Edit(_));
+                if in_edit_mode {
+                    info!("External config reloaded while in Edit Mode; preserving active in-progress edit layout");
+                    let active_edit_layout = self.config.layout.clone();
+                    self.config = new_config;
+                    self.config.layout = active_edit_layout;
+                } else {
+                    self.config = new_config;
+                }
 
                 let mut tasks = Vec::new();
 
@@ -648,10 +663,11 @@ impl Application for ToodleApp {
                 }
 
                 if let WidgetState::Normal = self.state {
+                    let (target_w, target_h) = self.target_screen_dimensions();
                     let (anchor, (top, right, bottom, left), (w, h), _) = self
                         .config
                         .layout
-                        .calculate_geometry(self.screen_w, self.screen_h);
+                        .calculate_geometry(target_w, target_h);
                     tasks.push(layer_cmd::set_anchor(self.widget_surface_id, anchor));
                     tasks.push(layer_cmd::set_margin(
                         self.widget_surface_id,
@@ -678,63 +694,39 @@ impl Application for ToodleApp {
                 match output_event {
                     OutputEvent::Created(info_opt) => {
                         let name = info_opt.and_then(|info| info.name);
-                        if let Some(entry) = self.outputs.iter_mut().find(|e| e.output == wl_output)
-                        {
-                            if name.is_some() {
-                                entry.name = name;
-                            }
-                        } else {
-                            self.outputs.push(OutputEntry {
-                                name,
-                                output: wl_output,
-                            });
-                        }
+                        self.output_manager.handle_created(wl_output, name);
                     }
                     OutputEvent::InfoUpdate(info) => {
-                        if let Some((w, h)) = info.logical_size {
+                        let logical_size = info.logical_size.and_then(|(w, h)| {
                             if w > 0 && h > 0 {
-                                self.screen_w = w as u32;
-                                self.screen_h = h as u32;
+                                Some((w as u32, h as u32))
+                            } else {
+                                None
                             }
-                        }
-                        if let Some(entry) = self.outputs.iter_mut().find(|e| e.output == wl_output)
-                        {
-                            entry.name = info.name;
-                        } else {
-                            self.outputs.push(OutputEntry {
-                                name: info.name,
-                                output: wl_output,
-                            });
-                        }
+                        });
+                        self.output_manager.handle_info_update(
+                            &wl_output,
+                            info.name,
+                            logical_size,
+                            None,
+                        );
                     }
                     OutputEvent::Removed => {
-                        self.outputs.retain(|e| e.output != wl_output);
+                        self.output_manager.handle_removed(&wl_output);
                     }
                 }
 
-                // If user configured a specific display output (e.g. "DP-2"),
-                // and that display has just become available, relocate the widget.
-                if let Some(target) = &self.config.display.output {
-                    let clean_target = clean_display_name(target);
-                    if !clean_target.is_empty() {
-                        let is_available = self.outputs.iter().any(|e| {
-                            e.name
-                                .as_deref()
-                                .map(|n| clean_display_name(n).eq_ignore_ascii_case(&clean_target))
-                                .unwrap_or(false)
-                        });
-                        let current_clean = self
-                            .current_assigned_output
-                            .as_deref()
-                            .map(clean_display_name);
-                        if is_available && current_clean.as_deref() != Some(clean_target.as_str()) {
-                            info!(
-                                "Configured target display '{}' discovered! Relocating widget.",
-                                clean_target
-                            );
-                            return self.recreate_widget();
-                        }
-                    }
+                // Check if target display state transitioned (e.g. monitor connected, disconnected, or changed)
+                let (new_resolved, changed) = self
+                    .output_manager
+                    .update_target(self.config.display.output.as_deref());
+
+                if changed {
+                    info!(
+                        "Target display state transitioned to {:?}. Recreating widget.",
+                        new_resolved
+                    );
+                    return self.recreate_widget();
                 }
 
                 Task::none()

@@ -106,6 +106,15 @@ To eliminate redraw flicker and ghosting/blur artifacts caused by continuous sli
   - Window heights are sized with generous headroom to fully enclose oversized typography (clock size: 38..310px, date/weather size: 14..110px) and weather icon bounding boxes, preventing any bottom clipping.
   - Window dimensions and font sizes synchronize 1:1, eliminating the need for a separate font scale slider.
 
+### 2.6 Multi-Monitor & Output State Machine (`OutputManager`)
+Toodle manages Wayland outputs dynamically through `OutputManager`:
+- Tracks detected `WlOutput` instances and maps them to clean connector names (`DP-1`, `HDMI-A-1`) via `cosmic-randr` inspection.
+- Dynamically resolves `DisplayConfig::output`:
+  - If a specific output name is configured and connected, Toodle targets that exact output.
+  - If the configured output is disconnected or unset, Toodle seamlessly falls back to the primary or first available output.
+  - When the configured output reconnects (hot-plug), Toodle automatically rebinds.
+- Target dimensions (`target_logical_size`) are tracked per output, completely isolating geometry calculations across multi-monitor setups without global screen dimension contamination.
+
 ---
 
 ## 3. Clock Synchronizer Pipeline
@@ -156,16 +165,12 @@ This ensures each update tick fires precisely at `XX:XX:XX.000000`, matching the
 └───────────────────────────┘
 ```
 
-### 4.1 Strict Location Coordinate Validation
-To prevent returning stale cache data when a user switches locations (e.g. from Tokyo to London):
-- `CachedWeather` records `latitude`, `longitude`, `cached_at`, and `data`.
-- `is_location_match(lat, lon)` validates coordinates within `0.02` degrees (~2 km):
-  ```rust
-  pub fn is_location_match(&self, lat: f64, lon: f64) -> bool {
-      (self.latitude - lat).abs() < 0.02 && (self.longitude - lon).abs() < 0.02
-  }
-  ```
-- If coordinates do not match, the cache is bypassed immediately, triggering a fresh fetch for the newly requested coordinates.
+### 4.1 Strict Response Parsing & Coordinate Validation
+To ensure robustness against upstream API changes and invalid user input:
+- **Strict Parsing**: JSON responses are rigorously validated. Missing `temperature_2m` or `weather_code` returns `WeatherError::Parse` rather than silently defaulting to `0.0°C` / `Clear sky`. Daily forecast array lengths must strictly match the date array length.
+- **Coordinate Bounds**: `latitude` (`-90.0..=90.0`) and `longitude` (`-180.0..=180.0`) are validated for finite numeric bounds before initiating network requests.
+- **Clock-Skew Protection**: Cache freshness validation rejects negative age elapsed (`now < cached_at`), preventing stale cache freezing on system clock adjustments.
+- **Location Matching**: `CachedWeather` records `latitude`, `longitude`, `cached_at`, and `data`. `is_location_match(lat, lon)` validates coordinates within `0.02` degrees (~2 km). Switching coordinates immediately bypasses outdated cache.
 
 ### 4.2 Cache Retention Policy (Design Doc Sec 14)
 - **Current Weather**: 30-minute validity window.
@@ -187,11 +192,13 @@ Communication between `toodle-settings` and `toodle` is decoupled via `~/.config
    ```
 2. **Inotify Event in `toodle` Daemon**:
    - `notify::recommended_watcher` receives a rename / create event on `config.toml`.
-   - Flushes after a short 25ms delay to ensure file write integrity.
-   - Loads new `Config`, compares against current in-memory config, and applies updates:
+   - Coalesces rapid sequential events with a 50ms debounce delay and event queue drain.
+   - Loads new `Config`, automatically migrates legacy configuration fields (`anchor`, `margin_x`, etc.) to modern `grid_position` & `size_stage`, and rewrites the clean modern TOML structure back to disk.
+   - Compares against current in-memory config and applies updates:
      - Margin / Anchor / Size adjustments -> Immediate Wayland layer updates.
      - Theme / Color / Font Scale / Shadow -> Widget visual repaint.
      - Location change -> Weather display reset to loading `"..."` and fresh data fetched.
+     - Edit mode protection -> If user is actively in interactive Edit mode, active edit coordinates are preserved to prevent edit cancellation.
 
 ---
 
@@ -237,12 +244,12 @@ Normal text (time, date, temperature, condition text) uses the theme's selected 
 ## 7. Known Implementation Gaps (Design Doc Sec 25)
 
 The following areas are explicitly documented as known gaps between the v0.3 design and current code:
-1. **Display Output Binding**: `DisplayConfig::output` is stored in configuration, but `toodle` currently binds to `IcedOutput::Active`.
+1. **Display Output Binding**: **Resolved**. Implemented via `OutputManager` state machine; supports specific connector matching, automatic fallback to primary/first available output, hot-plug re-attachment, and per-output geometry calculation. (Fractional scaling / mixed-DPI multi-monitor configurations remain an unverified physical hardware item).
 2. **Decoupled Weather TTL**: Current weather (30m) and forecast (3h) cache validity are defined, but fetch operations currently run bundled.
 3. **HTTP Exponential Backoff**: Automatic retry backoff for HTTP 429/5xx is not yet implemented.
 4. **Geocoding**: City presets and manual coordinates are supported; automatic name-to-coordinate lookup is planned for Phase 5.
 5. **Popup Dismissal**: Outside-click and focus-loss dismiss behavior are awaiting compositor event verification and formalization.
-6. **Multi-Monitor Verification**: Single-display geometry across standard resolutions (from 640×360 up to WQHD 2560×1440 and 4K 3840×2160) is verified through comprehensive automated geometry unit testing. Multi-monitor environments—specifically mixed-resolution and multi-DPI multi-monitor configurations—have not been sufficiently verified on physical hardware and remain an unverified item until dedicated physical test setups are available.
+6. **Multi-Monitor Physical Verification**: Single-display geometry across standard resolutions (from 640×360 up to WQHD 2560×1440 and 4K 3840×2160) is verified through comprehensive automated geometry unit testing. Multi-monitor environments—specifically mixed-resolution and multi-DPI multi-monitor configurations—have not been sufficiently verified on physical hardware and remain an unverified item until dedicated physical test setups are available.
 
 ---
 

@@ -1,5 +1,184 @@
+use cosmic::cctk::sctk::reexports::client::protocol::wl_output::WlOutput;
 use std::process::Command;
 use tracing::warn;
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct OutputEntry<O = WlOutput> {
+    pub name: Option<String>,
+    pub output: O,
+    pub logical_size: Option<(u32, u32)>,
+    pub scale_factor: Option<f64>,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum ResolvedOutput<O = WlOutput> {
+    Active {
+        logical_size: (u32, u32),
+    },
+    Specific {
+        name: String,
+        output: O,
+        logical_size: (u32, u32),
+    },
+}
+
+impl<O> ResolvedOutput<O> {
+    pub fn logical_size(&self) -> (u32, u32) {
+        match self {
+            ResolvedOutput::Active { logical_size } => *logical_size,
+            ResolvedOutput::Specific { logical_size, .. } => *logical_size,
+        }
+    }
+
+    pub fn output_name(&self) -> Option<&str> {
+        match self {
+            ResolvedOutput::Active { .. } => None,
+            ResolvedOutput::Specific { name, .. } => Some(name.as_str()),
+        }
+    }
+
+    pub fn specific_output(&self) -> Option<&O> {
+        match self {
+            ResolvedOutput::Active { .. } => None,
+            ResolvedOutput::Specific { output, .. } => Some(output),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct OutputManager<O = WlOutput> {
+    outputs: Vec<OutputEntry<O>>,
+    fallback_resolution: (u32, u32),
+    current_resolved: Option<ResolvedOutput<O>>,
+}
+
+impl<O: Clone + PartialEq> OutputManager<O> {
+    pub fn new(fallback_resolution: (u32, u32)) -> Self {
+        Self {
+            outputs: Vec::new(),
+            fallback_resolution,
+            current_resolved: None,
+        }
+    }
+
+    pub fn outputs(&self) -> &[OutputEntry<O>] {
+        &self.outputs
+    }
+
+    pub fn current_resolved(&self) -> Option<&ResolvedOutput<O>> {
+        self.current_resolved.as_ref()
+    }
+
+    pub fn fallback_resolution(&self) -> (u32, u32) {
+        self.fallback_resolution
+    }
+
+    pub fn set_fallback_resolution(&mut self, res: (u32, u32)) {
+        self.fallback_resolution = res;
+    }
+
+    pub fn handle_created(&mut self, output: O, name: Option<String>) {
+        if let Some(entry) = self.outputs.iter_mut().find(|e| e.output == output) {
+            if name.is_some() {
+                entry.name = name;
+            }
+        } else {
+            self.outputs.push(OutputEntry {
+                name,
+                output,
+                logical_size: None,
+                scale_factor: None,
+            });
+        }
+    }
+
+    pub fn handle_info_update(
+        &mut self,
+        output: &O,
+        name: Option<String>,
+        logical_size: Option<(u32, u32)>,
+        scale_factor: Option<f64>,
+    ) {
+        if let Some(entry) = self.outputs.iter_mut().find(|e| &e.output == output) {
+            if name.is_some() {
+                entry.name = name;
+            }
+            if logical_size.is_some() {
+                entry.logical_size = logical_size;
+            }
+            if scale_factor.is_some() {
+                entry.scale_factor = scale_factor;
+            }
+        } else {
+            self.outputs.push(OutputEntry {
+                name,
+                output: output.clone(),
+                logical_size,
+                scale_factor,
+            });
+        }
+    }
+
+    pub fn handle_removed(&mut self, output: &O) {
+        self.outputs.retain(|e| &e.output != output);
+    }
+
+    /// Resolve target output based on configuration.
+    /// If configured with a name and that output exists in available outputs,
+    /// returns `ResolvedOutput::Specific`.
+    /// Otherwise, falls back to `ResolvedOutput::Active`.
+    pub fn resolve(&self, target_config_name: Option<&str>) -> ResolvedOutput<O> {
+        if let Some(target) = target_config_name {
+            let clean_target = clean_display_name(target);
+            if !clean_target.is_empty() {
+                for entry in &self.outputs {
+                    if let Some(name) = &entry.name {
+                        let clean_entry = clean_display_name(name);
+                        if clean_entry.eq_ignore_ascii_case(&clean_target) {
+                            let size = entry.logical_size.unwrap_or(self.fallback_resolution);
+                            return ResolvedOutput::Specific {
+                                name: clean_entry,
+                                output: entry.output.clone(),
+                                logical_size: size,
+                            };
+                        }
+                    }
+                }
+            }
+        }
+
+        // Active output fallback: if any output is connected, its logical size can be used,
+        // otherwise use fallback_resolution
+        let active_size = self
+            .outputs
+            .first()
+            .and_then(|o| o.logical_size)
+            .unwrap_or(self.fallback_resolution);
+
+        ResolvedOutput::Active {
+            logical_size: active_size,
+        }
+    }
+
+    /// Update target resolution and return (newly_resolved, changed).
+    /// `changed` is true if the output binding or target geometry has changed.
+    pub fn update_target(&mut self, target_config_name: Option<&str>) -> (ResolvedOutput<O>, bool) {
+        let new_resolved = self.resolve(target_config_name);
+        let changed = self.current_resolved.as_ref() != Some(&new_resolved);
+        self.current_resolved = Some(new_resolved.clone());
+        (new_resolved, changed)
+    }
+
+    /// Set current resolved directly (e.g. after recreating widget)
+    pub fn set_current_resolved(&mut self, resolved: ResolvedOutput<O>) {
+        self.current_resolved = Some(resolved);
+    }
+
+    /// Helper to get target logical resolution without modifying state
+    pub fn target_logical_size(&self, target_config_name: Option<&str>) -> (u32, u32) {
+        self.resolve(target_config_name).logical_size()
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DetectedDisplay {
@@ -97,10 +276,10 @@ pub fn parse_resolution_from_cosmic_randr(text: &str) -> Option<(u32, u32)> {
             let trimmed = line.trim();
             if let Some(res_str) = trimmed.split_whitespace().next() {
                 let mut parts = res_str.split('x');
-                if let (Some(w), Some(h)) = (parts.next(), parts.next()) {
-                    if let (Ok(w_val), Ok(h_val)) = (w.parse::<u32>(), h.parse::<u32>()) {
-                        return Some((w_val, h_val));
-                    }
+                if let (Some(w), Some(h)) = (parts.next(), parts.next())
+                    && let (Ok(w_val), Ok(h_val)) = (w.parse::<u32>(), h.parse::<u32>())
+                {
+                    return Some((w_val, h_val));
                 }
             }
         }
@@ -215,5 +394,140 @@ mod tests {
 ";
         let res = parse_resolution_from_cosmic_randr(sample);
         assert_eq!(res, Some((2560, 1440)));
+    }
+
+    #[test]
+    fn test_output_manager_initial_state_fallback() {
+        let mut mgr = OutputManager::<u32>::new((1920, 1080));
+        assert_eq!(mgr.fallback_resolution(), (1920, 1080));
+        assert!(mgr.outputs().is_empty());
+
+        // Without connected displays, resolves to Active with fallback size
+        let (resolved, changed) = mgr.update_target(Some("DP-2"));
+        assert!(changed);
+        assert_eq!(
+            resolved,
+            ResolvedOutput::Active {
+                logical_size: (1920, 1080)
+            }
+        );
+        assert_eq!(resolved.logical_size(), (1920, 1080));
+        assert_eq!(resolved.output_name(), None);
+    }
+
+    #[test]
+    fn test_output_manager_target_specific_and_geometry() {
+        let mut mgr = OutputManager::<u32>::new((1920, 1080));
+
+        // Connect DP-1 (ID 1)
+        mgr.handle_created(1, Some("DP-1".to_string()));
+        mgr.handle_info_update(&1, Some("DP-1".to_string()), Some((2560, 1440)), Some(1.0));
+
+        // Target is DP-1
+        let (resolved, changed) = mgr.update_target(Some("DP-1"));
+        assert!(changed);
+        assert_eq!(
+            resolved,
+            ResolvedOutput::Specific {
+                name: "DP-1".to_string(),
+                output: 1,
+                logical_size: (2560, 1440),
+            }
+        );
+        assert_eq!(resolved.logical_size(), (2560, 1440));
+        assert_eq!(resolved.output_name(), Some("DP-1"));
+        assert_eq!(resolved.specific_output(), Some(&1));
+
+        // Calling update_target again without changes should return changed = false
+        let (_, changed_again) = mgr.update_target(Some("DP-1"));
+        assert!(!changed_again);
+    }
+
+    #[test]
+    fn test_output_manager_multimonitor_isolation() {
+        let mut mgr = OutputManager::<u32>::new((1920, 1080));
+
+        // Monitor A: DP-1 = 1920x1080
+        mgr.handle_created(1, Some("DP-1".to_string()));
+        mgr.handle_info_update(&1, Some("DP-1".to_string()), Some((1920, 1080)), Some(1.0));
+
+        // Monitor B: DP-2 = 3840x2160
+        mgr.handle_created(2, Some("DP-2".to_string()));
+        mgr.handle_info_update(&2, Some("DP-2".to_string()), Some((3840, 2160)), Some(1.0));
+
+        // Target A gets exactly 1920x1080
+        let res_a = mgr.resolve(Some("DP-1"));
+        assert_eq!(res_a.logical_size(), (1920, 1080));
+
+        // Target B gets exactly 3840x2160
+        let res_b = mgr.resolve(Some("DP-2"));
+        assert_eq!(res_b.logical_size(), (3840, 2160));
+
+        // Updating target A does not pollute target B
+        assert_eq!(mgr.target_logical_size(Some("DP-1")), (1920, 1080));
+        assert_eq!(mgr.target_logical_size(Some("DP-2")), (3840, 2160));
+    }
+
+    #[test]
+    fn test_output_manager_hotplug_attach_and_disconnect() {
+        let mut mgr = OutputManager::<u32>::new((1280, 720));
+
+        // User configured target "DP-2", but only DP-1 is connected initially
+        mgr.handle_created(1, Some("DP-1".to_string()));
+        mgr.handle_info_update(&1, Some("DP-1".to_string()), Some((1920, 1080)), Some(1.0));
+
+        let (init_resolved, _) = mgr.update_target(Some("DP-2"));
+        // Falls back to Active because DP-2 is not yet connected
+        assert_eq!(
+            init_resolved,
+            ResolvedOutput::Active {
+                logical_size: (1920, 1080)
+            }
+        );
+
+        // Now DP-2 is hot-plugged!
+        mgr.handle_created(2, Some("DP-2".to_string()));
+        mgr.handle_info_update(&2, Some("DP-2".to_string()), Some((2560, 1440)), Some(1.0));
+
+        // update_target must detect transition from Active -> Specific
+        let (plugged_resolved, changed) = mgr.update_target(Some("DP-2"));
+        assert!(changed, "Must detect that DP-2 became available!");
+        assert_eq!(
+            plugged_resolved,
+            ResolvedOutput::Specific {
+                name: "DP-2".to_string(),
+                output: 2,
+                logical_size: (2560, 1440),
+            }
+        );
+
+        // Now DP-2 is unplugged!
+        mgr.handle_removed(&2);
+
+        // update_target must detect transition from Specific -> Active
+        let (unplugged_resolved, changed) = mgr.update_target(Some("DP-2"));
+        assert!(changed, "Must detect that DP-2 was removed and fall back!");
+        assert_eq!(
+            unplugged_resolved,
+            ResolvedOutput::Active {
+                logical_size: (1920, 1080)
+            }
+        );
+
+        // Now DP-2 is re-connected!
+        mgr.handle_created(3, Some("DP-2".to_string()));
+        mgr.handle_info_update(&3, Some("DP-2".to_string()), Some((2560, 1440)), Some(1.0));
+
+        // update_target must detect re-connection!
+        let (reconnected_resolved, changed) = mgr.update_target(Some("DP-2"));
+        assert!(changed, "Must detect that DP-2 reconnected!");
+        assert_eq!(
+            reconnected_resolved,
+            ResolvedOutput::Specific {
+                name: "DP-2".to_string(),
+                output: 3,
+                logical_size: (2560, 1440),
+            }
+        );
     }
 }

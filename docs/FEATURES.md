@@ -33,10 +33,13 @@ This document details the functional capabilities and features of **Toodle**, th
   - Highlights `(Today)` in the current day card.
   - Shows minimum and maximum temperatures, weather conditions, precipitation probability, and weather icons.
   - Solid dark styling for consistent visibility.
-- **Two-Tier Persistent Caching**:
+- **Two-Tier Persistent Caching & Robustness**:
   - Current weather cache policy: 30 minutes validity.
   - Forecast cache policy: 3 hours validity.
   - Geographical coordinate validation (`is_location_match`) ensures that switching cities immediately bypasses outdated cache.
+  - Strict response validation: missing temperature or weather code returns a parse error instead of silently defaulting to `0.0°C` / Clear sky. Array lengths across daily forecast fields are strictly verified.
+  - Finite coordinate bounds checking (`-90.0..=90.0` lat, `-180.0..=180.0` lon) prevents invalid network requests.
+  - Clock-skew protection prevents cache freezing during system time adjustments.
   - Graceful offline fallback: if network requests fail, the last valid cached data for the current coordinates is displayed automatically.
 
 ---
@@ -110,7 +113,7 @@ A native XDG Toplevel application (`720 x 780`, solid dark background) providing
 
 ### 5.4 Display Tab
 - **Target Display Output**: Wayland output name (e.g. `"DP-1"`).
-- *(Note: Stored in config; output binding is a roadmap item; widget currently attaches to `Active Output`)*.
+- **Dynamic Output Resolution**: Resolved dynamically by `OutputManager`; matches connected outputs, seamlessly falls back to primary/first available output if disconnected, and isolates geometry calculations per display. (Multi-monitor fractional scaling and mixed-DPI remain unverified on physical hardware).
 
 ---
 

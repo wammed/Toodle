@@ -28,7 +28,7 @@ impl WeatherIcon {
             61 | 63 | 65 => Self::Rain,
             66 | 67 => Self::FreezingRain,
             71 | 73 | 75 | 77 => Self::Snow,
-            80 | 81 | 82 => Self::RainShower,
+            80..=82 => Self::RainShower,
             85 | 86 => Self::SnowShower,
             95 | 96 | 99 => Self::Thunderstorm,
             _ => Self::Cloudy,

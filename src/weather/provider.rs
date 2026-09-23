@@ -61,7 +61,7 @@ pub fn wmo_code_to_text(code: u8) -> &'static str {
         61 | 63 | 65 => "Rain",
         66 | 67 => "Freezing Rain",
         71 | 73 | 75 | 77 => "Snow",
-        80 | 81 | 82 => "Rain showers",
+        80..=82 => "Rain showers",
         85 | 86 => "Snow showers",
         95 => "Thunderstorm",
         96 | 99 => "Thunderstorm w/ hail",
@@ -95,23 +95,84 @@ impl Default for OpenMeteoProvider {
 }
 
 #[derive(Deserialize)]
-struct OpenMeteoResponse {
-    current: Option<OpenMeteoCurrent>,
-    daily: Option<OpenMeteoDaily>,
+pub(crate) struct OpenMeteoResponse {
+    pub current: Option<OpenMeteoCurrent>,
+    pub daily: Option<OpenMeteoDaily>,
 }
 
 #[derive(Deserialize)]
-struct OpenMeteoCurrent {
-    temperature_2m: Option<f32>,
-    weather_code: Option<u8>,
+pub(crate) struct OpenMeteoCurrent {
+    pub temperature_2m: Option<f32>,
+    pub weather_code: Option<u8>,
 }
 
 #[derive(Deserialize)]
-struct OpenMeteoDaily {
-    time: Option<Vec<String>>,
-    weather_code: Option<Vec<u8>>,
-    temperature_2m_max: Option<Vec<f32>>,
-    temperature_2m_min: Option<Vec<f32>>,
+pub(crate) struct OpenMeteoDaily {
+    pub time: Option<Vec<String>>,
+    pub weather_code: Option<Vec<u8>>,
+    pub temperature_2m_max: Option<Vec<f32>>,
+    pub temperature_2m_min: Option<Vec<f32>>,
+}
+
+pub(crate) fn parse_open_meteo_response(
+    om: OpenMeteoResponse,
+) -> Result<WeatherData, WeatherError> {
+    let current_data = om
+        .current
+        .ok_or_else(|| WeatherError::Parse("Missing 'current' in Open-Meteo response".into()))?;
+
+    let temp = current_data.temperature_2m.ok_or_else(|| {
+        WeatherError::Parse("Missing 'current.temperature_2m' in Open-Meteo response".into())
+    })?;
+    let code = current_data.weather_code.ok_or_else(|| {
+        WeatherError::Parse("Missing 'current.weather_code' in Open-Meteo response".into())
+    })?;
+    let condition_text = wmo_code_to_text(code).to_string();
+
+    let mut daily_forecasts = Vec::new();
+    if let Some(daily) = om.daily {
+        let times = daily.time.unwrap_or_default();
+        let codes = daily.weather_code.unwrap_or_default();
+        let maxs = daily.temperature_2m_max.unwrap_or_default();
+        let mins = daily.temperature_2m_min.unwrap_or_default();
+
+        let len = times.len();
+        if codes.len() != len || maxs.len() != len || mins.len() != len {
+            return Err(WeatherError::Parse(format!(
+                "Mismatched daily forecast array lengths: time={}, codes={}, maxs={}, mins={}",
+                len,
+                codes.len(),
+                maxs.len(),
+                mins.len()
+            )));
+        }
+
+        for i in 0..len {
+            let d_code = codes[i];
+            daily_forecasts.push(DailyForecast {
+                date: times[i].clone(),
+                weather_code: d_code,
+                condition_text: wmo_code_to_text(d_code).to_string(),
+                temp_min_celsius: mins[i],
+                temp_max_celsius: maxs[i],
+            });
+        }
+    }
+
+    Ok(WeatherData {
+        current: CurrentWeather {
+            temperature_celsius: temp,
+            weather_code: code,
+            condition_text,
+        },
+        daily: daily_forecasts,
+    })
+}
+
+pub fn parse_open_meteo_json(json_str: &str) -> Result<WeatherData, WeatherError> {
+    let om: OpenMeteoResponse =
+        serde_json::from_str(json_str).map_err(|e| WeatherError::Parse(e.to_string()))?;
+    parse_open_meteo_response(om)
 }
 
 #[async_trait]
@@ -145,41 +206,7 @@ impl WeatherProvider for OpenMeteoProvider {
             .await
             .map_err(|e| WeatherError::Parse(e.to_string()))?;
 
-        let current_data = om.current.ok_or_else(|| {
-            WeatherError::Parse("Missing 'current' in Open-Meteo response".into())
-        })?;
-
-        let temp = current_data.temperature_2m.unwrap_or(0.0);
-        let code = current_data.weather_code.unwrap_or(0);
-        let condition_text = wmo_code_to_text(code).to_string();
-
-        let mut daily_forecasts = Vec::new();
-        if let Some(daily) = om.daily {
-            let times = daily.time.unwrap_or_default();
-            let codes = daily.weather_code.unwrap_or_default();
-            let maxs = daily.temperature_2m_max.unwrap_or_default();
-            let mins = daily.temperature_2m_min.unwrap_or_default();
-
-            for i in 0..times.len() {
-                let d_code = codes.get(i).copied().unwrap_or(0);
-                daily_forecasts.push(DailyForecast {
-                    date: times.get(i).cloned().unwrap_or_default(),
-                    weather_code: d_code,
-                    condition_text: wmo_code_to_text(d_code).to_string(),
-                    temp_min_celsius: mins.get(i).copied().unwrap_or(0.0),
-                    temp_max_celsius: maxs.get(i).copied().unwrap_or(0.0),
-                });
-            }
-        }
-
-        Ok(WeatherData {
-            current: CurrentWeather {
-                temperature_celsius: temp,
-                weather_code: code,
-                condition_text,
-            },
-            daily: daily_forecasts,
-        })
+        parse_open_meteo_response(om)
     }
 }
 
@@ -219,5 +246,90 @@ mod tests {
         assert_eq!(wmo_code_to_icon(85), WeatherIcon::SnowShower);
         assert_eq!(wmo_code_to_icon(95), WeatherIcon::Thunderstorm);
         assert_eq!(wmo_code_to_icon(255), WeatherIcon::Cloudy);
+    }
+
+    #[test]
+    fn test_parse_open_meteo_json_valid() {
+        let json = r#"{
+            "current": {
+                "temperature_2m": 21.5,
+                "weather_code": 1
+            },
+            "daily": {
+                "time": ["2026-09-24", "2026-09-25"],
+                "weather_code": [0, 61],
+                "temperature_2m_max": [25.0, 22.0],
+                "temperature_2m_min": [18.0, 16.0]
+            }
+        }"#;
+
+        let res = parse_open_meteo_json(json).expect("Should parse valid response");
+        assert_eq!(res.current.temperature_celsius, 21.5);
+        assert_eq!(res.current.weather_code, 1);
+        assert_eq!(res.current.condition_text, "Mainly clear");
+        assert_eq!(res.daily.len(), 2);
+        assert_eq!(res.daily[0].date, "2026-09-24");
+        assert_eq!(res.daily[0].temp_max_celsius, 25.0);
+        assert_eq!(res.daily[0].temp_min_celsius, 18.0);
+        assert_eq!(res.daily[0].condition_text, "Clear sky");
+        assert_eq!(res.daily[1].condition_text, "Rain");
+    }
+
+    #[test]
+    fn test_parse_open_meteo_json_missing_temperature() {
+        let json = r#"{
+            "current": {
+                "weather_code": 0
+            }
+        }"#;
+
+        let err = parse_open_meteo_json(json).unwrap_err();
+        match err {
+            WeatherError::Parse(msg) => {
+                assert!(msg.contains("temperature_2m"), "Error must mention temperature_2m: {msg}");
+            }
+            _ => panic!("Expected WeatherError::Parse, got {:?}", err),
+        }
+    }
+
+    #[test]
+    fn test_parse_open_meteo_json_missing_weather_code() {
+        let json = r#"{
+            "current": {
+                "temperature_2m": 15.0
+            }
+        }"#;
+
+        let err = parse_open_meteo_json(json).unwrap_err();
+        match err {
+            WeatherError::Parse(msg) => {
+                assert!(msg.contains("weather_code"), "Error must mention weather_code: {msg}");
+            }
+            _ => panic!("Expected WeatherError::Parse, got {:?}", err),
+        }
+    }
+
+    #[test]
+    fn test_parse_open_meteo_json_mismatched_daily_arrays() {
+        let json = r#"{
+            "current": {
+                "temperature_2m": 19.0,
+                "weather_code": 2
+            },
+            "daily": {
+                "time": ["2026-09-24", "2026-09-25"],
+                "weather_code": [0],
+                "temperature_2m_max": [25.0, 22.0],
+                "temperature_2m_min": [18.0, 16.0]
+            }
+        }"#;
+
+        let err = parse_open_meteo_json(json).unwrap_err();
+        match err {
+            WeatherError::Parse(msg) => {
+                assert!(msg.contains("Mismatched daily forecast array lengths"), "Expected length mismatch error: {msg}");
+            }
+            _ => panic!("Expected WeatherError::Parse, got {:?}", err),
+        }
     }
 }

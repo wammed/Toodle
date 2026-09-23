@@ -33,13 +33,13 @@ impl CachedWeather {
     /// Current weather cache valid for 30 minutes (Design Doc Sec 13)
     pub fn is_current_valid(&self) -> bool {
         let age = Utc::now().signed_duration_since(self.cached_at);
-        age < chrono::Duration::minutes(30)
+        age >= chrono::Duration::zero() && age < chrono::Duration::minutes(30)
     }
 
     /// Forecast cache valid for 3 hours (Design Doc Sec 13)
     pub fn is_forecast_valid(&self) -> bool {
         let age = Utc::now().signed_duration_since(self.cached_at);
-        age < chrono::Duration::hours(3)
+        age >= chrono::Duration::zero() && age < chrono::Duration::hours(3)
     }
 }
 
@@ -81,8 +81,8 @@ impl WeatherCache {
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent)?;
         }
-        let serialized = serde_json::to_string(cached)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+        let serialized =
+            serde_json::to_string(cached).map_err(std::io::Error::other)?;
 
         let tmp_path = path.with_extension("tmp");
         fs::write(&tmp_path, serialized)?;
@@ -108,10 +108,20 @@ mod tests {
             daily: Vec::new(),
         };
 
-        let cached = CachedWeather::new(data, 35.6895, 139.6917);
+        let cached = CachedWeather::new(data.clone(), 35.6895, 139.6917);
         assert!(cached.is_current_valid());
         assert!(cached.is_forecast_valid());
         assert!(cached.is_location_match(35.6895, 139.6917));
         assert!(!cached.is_location_match(51.5074, -0.1278));
+
+        // Test clock skew / future timestamp: age is negative
+        let future_cached = CachedWeather {
+            cached_at: Utc::now() + chrono::Duration::minutes(10),
+            latitude: 35.6895,
+            longitude: 139.6917,
+            data,
+        };
+        assert!(!future_cached.is_current_valid());
+        assert!(!future_cached.is_forecast_valid());
     }
 }

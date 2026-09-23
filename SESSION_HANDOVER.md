@@ -124,6 +124,12 @@
     - ポップアップ（メニュー、カレンダー、予報）の配置計算を旧 `margins()` 依存から `calculate_geometry()` による共通計算へ統合し、全 9ゾーンで自然な位置に追従。
     - 9 GridPosition 全ゾーン × 複数解像度（640x360, 1280x720, 1920x1080, 2560x1440, 3840x2160）のジオメトリ自動テスト、決定論テスト、SizeStage 単調増加テストを追加。
     - マルチモニター環境における実機検証の未完了ステータス、および AI-assisted Vibe Coding による開発体制を全ドキュメントへ明記。
+18. **包括的コードレビュー指摘事項の完全解消とテストスイート強化 (40テスト通過・Clippy 0警告)**:
+    - **P0: ディスプレイ出力管理・状態遷移の堅牢化 (`src/display.rs`, `src/main.rs`)**: `OutputManager<O = WlOutput>` を導入し、Wayland 出力先の動的検出、`DisplayConfig::output` との照合、切断時のプライマリフォールバック、ホットプラグ再バインド、および画面別解像度管理（`target_screen_dimensions`）を完全実装。
+    - **P1: 天気レスポンス厳格検証 & 異常系防御 (`src/weather/provider.rs`, `src/weather/service.rs`, `src/weather/cache.rs`)**: 気温や天気コード欠落時に `0.0°C` や晴れへ無音フォールバックせず明示的なパースエラーを返却。日別予報配列長の完全一致検証、座標範囲検証（`-90..=90`, `-180..=180`）、クロックスキュー対策を実装。
+    - **P1: 設定保存エラーの可視化 & ファイル監視のデバウンス (`src/settings/main.rs`, `src/config/mod.rs`, `src/main.rs`)**: `toodle-settings` で保存失敗時に UI ステータスとエラーログで通知。ファイル監視に 50ms デバウンスとイベントキュー集約を導入。Edit モード中の設定リロードで作業中座標が上書きされる競合を防止。
+    - **P2: 旧設定読み込み時のディスク即時再保存**: 旧設定形式を検出した場合はマイグレーション後直ちにディスクへクリーンな新 TOML を再保存。
+    - **Clippy 警告ゼロ化 & 単体テスト 40件拡充**: 全ターゲット警告 0 件を達成し、OutputManager 状態遷移、JSON パース異常系、座標範囲、旧設定マイグレーション検出などのテストを追加。
 
 ---
 
@@ -263,10 +269,13 @@ Toodle/
 # 全バイナリのコンパイル確認 (toodle, toodle-settings)
 cargo check --bin toodle && cargo check --bin toodle-settings
 
-# 全単体テストの実行 (全10件)
+# 全単体テストの実行 (全40件)
 cargo test
 
-# 天気モジュール単体テスト (キャッシュ検証、座標一致、オフラインフォールバック)
+# Clippy静的解析 (全ターゲット警告0件)
+cargo clippy --all-targets
+
+# 天気モジュール単体テスト (キャッシュ検証、座標一致、オフラインフォールバック、異常系パース検証)
 cargo test --lib weather
 
 # リリースビルドの生成 (ビルドのみ、$HOME/.local/bin への自動インストールは行われません)
@@ -291,8 +300,7 @@ cargo build --release
 新設計書 v0.3 Section 28 に基づく今後の作業優先度：
 
 ### Phase 5 — Robustness (堅牢化 & 未接続機能の解消)
-1. **Display Output の実装接続**:
-   - `DisplayConfig::output` を Layer Surface の `IcedOutput`（出力名指定）に正しく配線。
+1. **Display Output の実装接続**: **完了** (`OutputManager` 状態機械により、コネクタ名マッチング、プライマリフォールバック、ホットプラグ再接続、画面個別解像度管理を実装完了。マルチモニターでの分数スケーリング/混在DPIの実機検証は継続課題)。
 2. **Popup Dismissal の実機検証・実装**:
    - 外側クリック / フォーカス喪失時の自動クローズ機構の検証と実装。
 3. **Weather Current / Forecast Cache の独立化**:

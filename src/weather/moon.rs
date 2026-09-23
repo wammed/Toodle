@@ -109,10 +109,10 @@ mod tests {
 
     #[test]
     fn test_all_28_glyphs_mapped() {
-        for i in 0..28 {
+        for (i, expected_glyph) in MOON_GLYPHS_28.iter().enumerate() {
             let phase = i as f64 / 28.0;
             let moon = MoonPhase { phase };
-            assert_eq!(moon.glyph(), MOON_GLYPHS_28[i]);
+            assert_eq!(moon.glyph(), *expected_glyph);
         }
     }
 }

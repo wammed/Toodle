@@ -7,7 +7,7 @@ use tracing::{info, warn};
 
 pub use theme::{COLOR_PALETTE_16, THEME_PRESETS, parse_hex_color};
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct Config {
     #[serde(default)]
     pub display: DisplayConfig,
@@ -19,43 +19,21 @@ pub struct Config {
     pub weather: WeatherConfig,
 }
 
-impl Default for Config {
-    fn default() -> Self {
-        Self {
-            display: DisplayConfig::default(),
-            layout: LayoutConfig::default(),
-            appearance: AppearanceConfig::default(),
-            weather: WeatherConfig::default(),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct DisplayConfig {
     /// Target output display name (e.g., "DP-1", "HDMI-A-1", or empty for primary/default)
     #[serde(default)]
     pub output: Option<String>,
 }
 
-impl Default for DisplayConfig {
-    fn default() -> Self {
-        Self { output: None }
-    }
-}
-
 /// Legacy 4-corner anchor (retained for legacy config migration compatibility only)
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum Anchor {
     TopLeft,
+    #[default]
     TopRight,
     BottomLeft,
     BottomRight,
-}
-
-impl Default for Anchor {
-    fn default() -> Self {
-        Anchor::TopRight
-    }
 }
 
 impl Anchor {
@@ -73,11 +51,12 @@ impl Anchor {
 }
 
 /// 9 display zones (3 columns × 3 rows: 3x3 grid)
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum GridPosition {
     // Row 0: Top
     TopLeft,
     TopCenter,
+    #[default]
     TopRight,
 
     // Row 1: Middle
@@ -89,12 +68,6 @@ pub enum GridPosition {
     BottomLeft,
     BottomCenter,
     BottomRight,
-}
-
-impl Default for GridPosition {
-    fn default() -> Self {
-        GridPosition::TopRight
-    }
 }
 
 impl GridPosition {
@@ -304,6 +277,16 @@ impl<'de> serde::Deserialize<'de> for LayoutConfig {
 }
 
 impl RawLayoutConfig {
+    pub(crate) fn is_legacy(&self) -> bool {
+        self.grid_position.is_none()
+            && self.size_stage.is_none()
+            && (self.anchor.is_some()
+                || self.margin_x.is_some()
+                || self.margin_y.is_some()
+                || self.width.is_some()
+                || self.height.is_some())
+    }
+
     fn into_layout_config(self) -> LayoutConfig {
         // 1. Both modern fields specified: use directly
         if let (Some(grid_position), Some(size_stage)) = (self.grid_position, self.size_stage) {
@@ -463,18 +446,16 @@ pub fn migrate_size_stage(width: u32, height: u32) -> u8 {
     best_stage
 }
 
+pub type LayerGeometry = (
+    cosmic::iced::platform_specific::shell::commands::layer_surface::Anchor,
+    (i32, i32, i32, i32),
+    (u32, u32),
+    f32,
+);
+
 impl LayoutConfig {
     /// Calculate LayerSurface geometry for current grid_position and size_stage
-    pub fn calculate_geometry(
-        &self,
-        screen_w: u32,
-        screen_h: u32,
-    ) -> (
-        cosmic::iced::platform_specific::shell::commands::layer_surface::Anchor,
-        (i32, i32, i32, i32),
-        (u32, u32),
-        f32,
-    ) {
+    pub fn calculate_geometry(&self, screen_w: u32, screen_h: u32) -> LayerGeometry {
         Self::geometry_for(self.grid_position, self.size_stage, screen_w, screen_h)
     }
 
@@ -484,12 +465,7 @@ impl LayoutConfig {
         stage: u8,
         screen_w: u32,
         screen_h: u32,
-    ) -> (
-        cosmic::iced::platform_specific::shell::commands::layer_surface::Anchor,
-        (i32, i32, i32, i32),
-        (u32, u32),
-        f32,
-    ) {
+    ) -> LayerGeometry {
         use cosmic::iced::platform_specific::shell::commands::layer_surface::Anchor as LayerAnchor;
         let info = get_size_stage(stage);
         let screen_w = screen_w.max(640);
@@ -597,16 +573,11 @@ impl Default for AppearanceConfig {
     }
 }
 
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum TemperatureUnit {
+    #[default]
     Celsius,
     Fahrenheit,
-}
-
-impl Default for TemperatureUnit {
-    fn default() -> Self {
-        TemperatureUnit::Celsius
-    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -642,6 +613,18 @@ impl Default for WeatherConfig {
     }
 }
 
+#[derive(Deserialize)]
+struct RawConfig {
+    #[serde(default)]
+    display: DisplayConfig,
+    #[serde(default)]
+    layout: Option<RawLayoutConfig>,
+    #[serde(default)]
+    appearance: AppearanceConfig,
+    #[serde(default)]
+    weather: WeatherConfig,
+}
+
 impl Config {
     pub fn config_path() -> PathBuf {
         dirs::config_dir()
@@ -650,13 +633,46 @@ impl Config {
             .join("config.toml")
     }
 
+    /// Parse configuration from a TOML string, detecting if legacy migration occurred.
+    pub fn load_from_str(content: &str) -> Result<(Config, bool), toml::de::Error> {
+        let raw: RawConfig = toml::from_str(content)?;
+        let mut migrated = false;
+        let layout = if let Some(raw_layout) = raw.layout {
+            if raw_layout.is_legacy() {
+                migrated = true;
+            }
+            raw_layout.into_layout_config()
+        } else {
+            LayoutConfig::default()
+        };
+
+        Ok((
+            Config {
+                display: raw.display,
+                layout,
+                appearance: raw.appearance,
+                weather: raw.weather,
+            },
+            migrated,
+        ))
+    }
+
     pub fn load() -> Self {
         let path = Self::config_path();
         if path.exists() {
             match fs::read_to_string(&path) {
-                Ok(content) => match toml::from_str::<Config>(&content) {
-                    Ok(cfg) => {
+                Ok(content) => match Self::load_from_str(&content) {
+                    Ok((cfg, migrated)) => {
                         info!("Loaded configuration from {:?}", path);
+                        if migrated {
+                            info!(
+                                "Legacy configuration detected at {:?}. Rewriting with modern format.",
+                                path
+                            );
+                            if let Err(e) = cfg.save() {
+                                warn!("Failed to save migrated configuration to {:?}: {}", path, e);
+                            }
+                        }
                         return cfg;
                     }
                     Err(e) => {
@@ -672,7 +688,9 @@ impl Config {
             }
         } else {
             let default_cfg = Config::default();
-            let _ = default_cfg.save();
+            if let Err(e) = default_cfg.save() {
+                warn!("Failed to save default config to {:?}: {}", path, e);
+            }
             return default_cfg;
         }
         Config::default()
@@ -684,7 +702,7 @@ impl Config {
             fs::create_dir_all(parent)?;
         }
         let serialized = toml::to_string_pretty(self)
-            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e))?;
+            .map_err(std::io::Error::other)?;
 
         // Atomic write via temporary file
         let tmp_path = path.with_extension("tmp");
@@ -705,19 +723,20 @@ impl Config {
             let (std_tx, std_rx) = std::sync::mpsc::channel();
             if let Ok(mut watcher) = notify::recommended_watcher(std_tx) {
                 let _ = watcher.watch(&parent, RecursiveMode::NonRecursive);
-                while let Ok(event) = std_rx.recv() {
-                    if let Ok(event) = event {
-                        if event
-                            .paths
-                            .iter()
-                            .any(|p| p.file_name() == path.file_name())
-                        {
-                            // Small delay to ensure atomic rename write is flushed
-                            std::thread::sleep(std::time::Duration::from_millis(25));
-                            let cfg = Config::load();
-                            if tx.unbounded_send(cfg).is_err() {
-                                break;
-                            }
+                while let Ok(Ok(event)) = std_rx.recv() {
+                    if event
+                        .paths
+                        .iter()
+                        .any(|p| p.file_name() == path.file_name())
+                    {
+                        // Debounce / coalesce rapid sequential filesystem events
+                        std::thread::sleep(std::time::Duration::from_millis(50));
+                        while let Ok(coalesced) = std_rx.try_recv() {
+                            let _ = coalesced;
+                        }
+                        let cfg = Config::load();
+                        if tx.unbounded_send(cfg).is_err() {
+                            break;
                         }
                     }
                 }
@@ -1080,5 +1099,32 @@ height = 175
 
         assert_eq!(result1, result2);
         assert_eq!(result1, result3);
+    }
+
+    #[test]
+    fn test_load_from_str_migration_detection() {
+        // 1. Legacy config: has anchor, margin_x, etc.
+        let legacy_toml = r#"
+[layout]
+anchor = "TopRight"
+margin_x = 20
+margin_y = 20
+width = 400
+height = 200
+"#;
+        let (cfg, migrated) = Config::load_from_str(legacy_toml).expect("Should parse legacy config");
+        assert!(migrated, "Legacy layout fields must trigger migration flag");
+        assert_eq!(cfg.layout.grid_position, GridPosition::TopRight);
+
+        // 2. Modern config: has grid_position and size_stage
+        let modern_toml = r#"
+[layout]
+grid_position = "Center"
+size_stage = 3
+"#;
+        let (cfg2, migrated2) = Config::load_from_str(modern_toml).expect("Should parse modern config");
+        assert!(!migrated2, "Modern layout fields must NOT trigger migration flag");
+        assert_eq!(cfg2.layout.grid_position, GridPosition::Center);
+        assert_eq!(cfg2.layout.size_stage, 3);
     }
 }

@@ -908,22 +908,18 @@ Configuration には Display Output 設定を持つ。
 output = "DP-1"
 ```
 
-ただし、**現行実装では `DisplayConfig::output` の値が Layer Surface の `IcedOutput` にまだ接続されておらず、現在は `IcedOutput::Active` が使用されている。**
-
-したがって v0.3 では：
-
 ```text
 Design:
   Output selection is a supported configuration concept.
 
 Implementation:
-  Currently Active Output.
+  OutputManager dynamically resolves connected Wayland outputs from cosmic-randr,
+  matching the configured output (e.g. "DP-1") or safely falling back to primary/first available.
+  Per-output dimensions are isolated during geometry calculations.
 
 Status:
-  Known Gap.
+  Implemented (Phase 5). Multi-monitor fractional scaling and mixed-DPI remains an unverified physical hardware item.
 ```
-
-と明示する。
 
 複数 Display へ同時に Widget を表示することは行わない。
 
@@ -1018,9 +1014,9 @@ v0.3 は「現在の実装と設計を同期する」ための文書であり、
 
 現在確認されている主な Gap：
 
-## 25.1 Display Output
+## 25.1 Display Output Binding (Resolved in Phase 5)
 
-`DisplayConfig::output` は設定として存在するが、現在の Layer Surface は `IcedOutput::Active` を使用している。
+`OutputManager` 状態機械により実装済み。検出された Wayland 出力先一覧から `DisplayConfig::output` を動的に解決し、特定コネクタへのバインド、プライマリ画面への自動フォールバック、ホットプラグ再バインド、および画面個別解像度管理をサポート。（マルチモニターにおける分数スケーリングや混在 DPI の実機検証は継続課題）。
 
 ## 25.2 Independent Weather TTL
 
