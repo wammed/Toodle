@@ -4,12 +4,12 @@
 
 ![Banner](images/toodle-banner.svg)
 
-[![License: GPL-3.0-or-later](https://img.shields.io/badge/License-GPL--3.0--or--later-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Rust](https://img.shields.io/badge/Rust-2021%20Edition-orange.svg)](https://www.rust-lang.org/)
 [![COSMIC](https://img.shields.io/badge/Desktop-COSMIC-purple.svg)](https://github.com/pop-os/cosmic-epoch)
 [![Wayland](https://img.shields.io/badge/Protocol-wlr--layer--shell-green.svg)](https://wayland.freedesktop.org/)
 
-[English (英語ドキュメント)](README.md) | [アーキテクチャ設計書](docs/ARCHITECTURE.ja.md) | [機能仕様書](docs/FEATURES.ja.md) | [設計書 v0.3 (Baseline)](docs/Drafts/Toodle-Design-Docs-v0.3.md) | [引き継ぎサマリー](SESSION_HANDOVER.md)
+[English (英語ドキュメント)](README.md) | [ライセンス通知](LICENSES.ja.md) | [アーキテクチャ設計書](docs/ARCHITECTURE.ja.md) | [機能仕様書](docs/FEATURES.ja.md) | [設計書 v0.3 (Baseline)](docs/Drafts/Toodle-Design-Docs-v0.3.md) | [引き継ぎサマリー](SESSION_HANDOVER.md)
 
 ---
 
@@ -40,6 +40,8 @@
 - COSMIC Desktop Environment（`cosmic-comp`, `libcosmic` 依存ライブラリ: `wayland`, `libxkbcommon`）。
 
 ### ビルド
+
+Toodle はソースコード形式で配布されます。GitHub Releases によるコンパイル済みバイナリの配布は行っていません。ソースからローカル環境でビルドしてください：
 
 ```bash
 # リポジトリのクローン
@@ -195,6 +197,8 @@ Toodle は、AIを活用した **Vibe Coding** によって開発されていま
 
 ## ライセンス
 
-本プロジェクトは [GPL-3.0-or-later](LICENSE) の下で公開されています。
+本プロジェクトは [MIT License](LICENSE) の下で公開されています。
 同梱の Meteocons カラー SVG アイコン（作者: Bas Milius）は [MIT License](THIRD_PARTY_LICENSES/METEOCONS_LICENSE.txt) の下でライセンスされています。
-同梱フォントは各フォント独自のライセンスが適用されます（bundled fonts retain their respective licenses）。詳細は [THIRD_PARTY_LICENSES/README.md](THIRD_PARTY_LICENSES/README.md) を参照してください。
+同梱フォントは各フォント独自の上流ライセンス（SIL Open Font License 1.1 / Bitstream Vera & DejaVu License）が適用されます。
+ライセンス体系、ソースコード配布方針、第三者アセット通知の詳細は **[LICENSES.ja.md](LICENSES.ja.md)** および [THIRD_PARTY_LICENSES/README.md](THIRD_PARTY_LICENSES/README.md) を参照してください。
+

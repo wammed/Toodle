@@ -1,4 +1,4 @@
-use crate::config::{get_size_stage, GridPosition, LayoutConfig};
+use crate::config::{GridPosition, LayoutConfig, get_size_stage};
 use cosmic::Element;
 use cosmic::iced::widget::{column, container, row, scrollable, text};
 use cosmic::iced::{Alignment, Border, Color, Length, Shadow};
@@ -113,13 +113,7 @@ impl EditState {
         ]
         .spacing(6);
 
-        let grid_section = column![
-            pos_header,
-            row_top,
-            row_mid,
-            row_bot,
-        ]
-        .spacing(6);
+        let grid_section = column![pos_header, row_top, row_mid, row_bot,].spacing(6);
 
         // 10-Stage Size Selection (1 ..= 10)
         let cur_stage = self.layout.size_stage.clamp(1, 10);
@@ -129,8 +123,13 @@ impl EditState {
             text("Widget Size (10 Stages)").size(13),
             text(format!(
                 "Stage {}: {} ({}×{}, {:.2}x)",
-                active_info.stage, active_info.label, active_info.width, active_info.height, active_info.font_scale
-            )).size(12),
+                active_info.stage,
+                active_info.label,
+                active_info.width,
+                active_info.height,
+                active_info.font_scale
+            ))
+            .size(12),
         ]
         .spacing(12)
         .align_y(Alignment::Center);
@@ -167,22 +166,11 @@ impl EditState {
         ]
         .spacing(6);
 
-        let size_section = column![
-            size_header,
-            stages_row_1,
-            stages_row_2,
-        ]
-        .spacing(6);
+        let size_section = column![size_header, stages_row_1, stages_row_2,].spacing(6);
 
-        let controls = column![
-            title,
-            header_actions,
-            hint,
-            grid_section,
-            size_section,
-        ]
-        .spacing(14)
-        .padding(14);
+        let controls = column![title, header_actions, hint, grid_section, size_section,]
+            .spacing(14)
+            .padding(14);
 
         let scroll = scrollable(controls)
             .width(Length::Fill)

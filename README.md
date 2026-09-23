@@ -4,12 +4,12 @@
 
 ![Banner](images/toodle-banner.svg)
 
-[![License: GPL-3.0-or-later](https://img.shields.io/badge/License-GPL--3.0--or--later-blue.svg)](LICENSE)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Rust](https://img.shields.io/badge/Rust-2021%20Edition-orange.svg)](https://www.rust-lang.org/)
 [![COSMIC](https://img.shields.io/badge/Desktop-COSMIC-purple.svg)](https://github.com/pop-os/cosmic-epoch)
 [![Wayland](https://img.shields.io/badge/Protocol-wlr--layer--shell-green.svg)](https://wayland.freedesktop.org/)
 
-[日本語ドキュメント (Japanese)](README.ja.md) | [Architecture](docs/ARCHITECTURE.md) | [Features](docs/FEATURES.md) | [Design Doc v0.3](docs/Drafts/Toodle-Design-Docs-v0.3.md) | [Handover Guide](SESSION_HANDOVER.md)
+[日本語ドキュメント (Japanese)](README.ja.md) | [Licenses](LICENSES.md) | [Architecture](docs/ARCHITECTURE.md) | [Features](docs/FEATURES.md) | [Design Doc v0.3](docs/Drafts/Toodle-Design-Docs-v0.3.md) | [Handover Guide](SESSION_HANDOVER.md)
 
 ---
 
@@ -40,6 +40,8 @@
 - COSMIC Desktop Environment (`cosmic-comp`, `libcosmic` dependencies: `wayland`, `libxkbcommon`).
 
 ### Building
+
+Toodle is distributed as source code; pre-compiled binaries are not distributed via GitHub releases. You can build the binaries locally from source:
 
 ```bash
 # Clone repository
@@ -197,6 +199,8 @@ Toodle is developed using AI-assisted Vibe Coding. AI is actively used for archi
 
 ## License
 
-This project is licensed under the [GPL-3.0-or-later](LICENSE) license.
+This project is licensed under the [MIT License](LICENSE).
 The embedded Meteocons color SVG icons by Bas Milius are licensed under the [MIT License](THIRD_PARTY_LICENSES/METEOCONS_LICENSE.txt).
-All bundled fonts retain their respective licenses. See [THIRD_PARTY_LICENSES/README.md](THIRD_PARTY_LICENSES/README.md) for details.
+All bundled fonts retain their respective upstream licenses (SIL Open Font License 1.1 / Bitstream Vera & DejaVu License).
+For comprehensive licensing details, source distribution policies, and third-party notices, see **[LICENSES.md](LICENSES.md)** and [THIRD_PARTY_LICENSES/README.md](THIRD_PARTY_LICENSES/README.md).
+

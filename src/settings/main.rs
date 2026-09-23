@@ -6,7 +6,7 @@ use cosmic::{Application, Element};
 
 use toodle::config::theme::{COLOR_PALETTE_16, THEME_PRESETS};
 use toodle::config::{Config, TemperatureUnit};
-use toodle::display::{clean_display_name, detect_displays, DetectedDisplay};
+use toodle::display::{DetectedDisplay, clean_display_name, detect_displays};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum SettingsTab {
@@ -628,14 +628,9 @@ impl SettingsApp {
         ]
         .spacing(10);
 
-        column![
-            detected_header,
-            note,
-            display_list,
-            manual_section,
-        ]
-        .spacing(18)
-        .into()
+        column![detected_header, note, display_list, manual_section,]
+            .spacing(18)
+            .into()
     }
 }
 

@@ -194,7 +194,10 @@ mod tests {
 
         for icon in all_icons {
             let bytes = icon.svg_bytes();
-            assert!(!bytes.is_empty(), "SVG bytes for {icon:?} must not be empty");
+            assert!(
+                !bytes.is_empty(),
+                "SVG bytes for {icon:?} must not be empty"
+            );
             let svg_str = std::str::from_utf8(bytes)
                 .unwrap_or_else(|_| panic!("SVG bytes for {icon:?} must be valid UTF-8"));
             assert!(

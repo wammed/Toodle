@@ -50,7 +50,6 @@ When an upstream revision changes, this audit entry must be re-checked.
 - BSD-3-Clause
 - BSL-1.0
 - CC0-1.0
-- GPL-3.0-or-later
 - ISC
 - MIT
 - MPL-2.0
@@ -58,7 +57,7 @@ When an upstream revision changes, this audit entry must be re-checked.
 - Unlicense
 - Zlib
 
-`GPL-3.0-or-later` is included because it is Toodle's own project license.
+Toodle's own project license is `MIT`. Permissive and weak-copyleft licenses (such as MPL-2.0 for libcosmic components) are permitted for dependencies, while strong-copyleft licenses (such as GPL) are excluded from the dependency graph.
 
 `CDLA-Permissive-2.0` is intentionally not in the allowlist. The `reqwest`
 configuration was changed to use `rustls-tls-native-roots`, and the audited

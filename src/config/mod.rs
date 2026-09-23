@@ -140,16 +140,116 @@ pub struct SizeStageInfo {
 }
 
 pub const SIZE_STAGES: [SizeStageInfo; 10] = [
-    SizeStageInfo { stage: 1,  width: 280,  height: 130, time_size: 38,  date_size: 14, spacing: 4,  padding: 8,  font_scale: 0.70, label: "Compact" },
-    SizeStageInfo { stage: 2,  width: 380,  height: 175, time_size: 52,  date_size: 19, spacing: 6,  padding: 10, font_scale: 1.00, label: "Default" },
-    SizeStageInfo { stage: 3,  width: 490,  height: 225, time_size: 68,  date_size: 25, spacing: 7,  padding: 13, font_scale: 1.35, label: "Medium" },
-    SizeStageInfo { stage: 4,  width: 620,  height: 285, time_size: 88,  date_size: 32, spacing: 9,  padding: 16, font_scale: 1.70, label: "Standard" },
-    SizeStageInfo { stage: 5,  width: 780,  height: 355, time_size: 112, date_size: 40, spacing: 11, padding: 19, font_scale: 2.20, label: "Large" },
-    SizeStageInfo { stage: 6,  width: 960,  height: 440, time_size: 140, date_size: 50, spacing: 13, padding: 23, font_scale: 2.75, label: "X-Large" },
-    SizeStageInfo { stage: 7,  width: 1180, height: 540, time_size: 174, date_size: 62, spacing: 16, padding: 27, font_scale: 3.35, label: "2X-Large" },
-    SizeStageInfo { stage: 8,  width: 1440, height: 650, time_size: 215, date_size: 76, spacing: 19, padding: 32, font_scale: 4.15, label: "Huge" },
-    SizeStageInfo { stage: 9,  width: 1740, height: 780, time_size: 260, date_size: 92, spacing: 22, padding: 38, font_scale: 4.90, label: "Giant" },
-    SizeStageInfo { stage: 10, width: 2060, height: 920, time_size: 310, date_size: 110, spacing: 25, padding: 44, font_scale: 5.60, label: "Max WQHD" },
+    SizeStageInfo {
+        stage: 1,
+        width: 280,
+        height: 130,
+        time_size: 38,
+        date_size: 14,
+        spacing: 4,
+        padding: 8,
+        font_scale: 0.70,
+        label: "Compact",
+    },
+    SizeStageInfo {
+        stage: 2,
+        width: 380,
+        height: 175,
+        time_size: 52,
+        date_size: 19,
+        spacing: 6,
+        padding: 10,
+        font_scale: 1.00,
+        label: "Default",
+    },
+    SizeStageInfo {
+        stage: 3,
+        width: 490,
+        height: 225,
+        time_size: 68,
+        date_size: 25,
+        spacing: 7,
+        padding: 13,
+        font_scale: 1.35,
+        label: "Medium",
+    },
+    SizeStageInfo {
+        stage: 4,
+        width: 620,
+        height: 285,
+        time_size: 88,
+        date_size: 32,
+        spacing: 9,
+        padding: 16,
+        font_scale: 1.70,
+        label: "Standard",
+    },
+    SizeStageInfo {
+        stage: 5,
+        width: 780,
+        height: 355,
+        time_size: 112,
+        date_size: 40,
+        spacing: 11,
+        padding: 19,
+        font_scale: 2.20,
+        label: "Large",
+    },
+    SizeStageInfo {
+        stage: 6,
+        width: 960,
+        height: 440,
+        time_size: 140,
+        date_size: 50,
+        spacing: 13,
+        padding: 23,
+        font_scale: 2.75,
+        label: "X-Large",
+    },
+    SizeStageInfo {
+        stage: 7,
+        width: 1180,
+        height: 540,
+        time_size: 174,
+        date_size: 62,
+        spacing: 16,
+        padding: 27,
+        font_scale: 3.35,
+        label: "2X-Large",
+    },
+    SizeStageInfo {
+        stage: 8,
+        width: 1440,
+        height: 650,
+        time_size: 215,
+        date_size: 76,
+        spacing: 19,
+        padding: 32,
+        font_scale: 4.15,
+        label: "Huge",
+    },
+    SizeStageInfo {
+        stage: 9,
+        width: 1740,
+        height: 780,
+        time_size: 260,
+        date_size: 92,
+        spacing: 22,
+        padding: 38,
+        font_scale: 4.90,
+        label: "Giant",
+    },
+    SizeStageInfo {
+        stage: 10,
+        width: 2060,
+        height: 920,
+        time_size: 310,
+        date_size: 110,
+        spacing: 25,
+        padding: 44,
+        font_scale: 5.60,
+        label: "Max WQHD",
+    },
 ];
 
 pub fn get_size_stage(stage: u8) -> SizeStageInfo {
@@ -217,7 +317,10 @@ impl RawLayoutConfig {
         if self.grid_position.is_some() || self.size_stage.is_some() {
             return LayoutConfig {
                 grid_position: self.grid_position.unwrap_or_default(),
-                size_stage: self.size_stage.unwrap_or_else(default_size_stage).clamp(1, 10),
+                size_stage: self
+                    .size_stage
+                    .unwrap_or_else(default_size_stage)
+                    .clamp(1, 10),
             };
         }
 
@@ -675,32 +778,43 @@ mod tests {
                 assert!(
                     next.width > cur.width,
                     "Stage {} width ({}) not greater than Stage {} width ({})",
-                    next.stage, next.width, cur.stage, cur.width
+                    next.stage,
+                    next.width,
+                    cur.stage,
+                    cur.width
                 );
                 assert!(
                     next.height > cur.height,
                     "Stage {} height ({}) not greater than Stage {} height ({})",
-                    next.stage, next.height, cur.stage, cur.height
+                    next.stage,
+                    next.height,
+                    cur.stage,
+                    cur.height
                 );
                 assert!(
                     next.time_size > cur.time_size,
-                    "Stage {} time_size not monotonic", next.stage
+                    "Stage {} time_size not monotonic",
+                    next.stage
                 );
                 assert!(
                     next.date_size > cur.date_size,
-                    "Stage {} date_size not monotonic", next.stage
+                    "Stage {} date_size not monotonic",
+                    next.stage
                 );
                 assert!(
                     next.font_scale > cur.font_scale,
-                    "Stage {} font_scale not monotonic", next.stage
+                    "Stage {} font_scale not monotonic",
+                    next.stage
                 );
                 assert!(
                     next.spacing >= cur.spacing,
-                    "Stage {} spacing decreased", next.stage
+                    "Stage {} spacing decreased",
+                    next.stage
                 );
                 assert!(
                     next.padding >= cur.padding,
-                    "Stage {} padding decreased", next.stage
+                    "Stage {} padding decreased",
+                    next.stage
                 );
             }
         }
@@ -841,14 +955,35 @@ height = 175
 
         let all_positions = [
             (GridPosition::TopLeft, LayerAnchor::TOP | LayerAnchor::LEFT),
-            (GridPosition::TopCenter, LayerAnchor::TOP | LayerAnchor::LEFT),
-            (GridPosition::TopRight, LayerAnchor::TOP | LayerAnchor::RIGHT),
-            (GridPosition::MiddleLeft, LayerAnchor::TOP | LayerAnchor::LEFT),
+            (
+                GridPosition::TopCenter,
+                LayerAnchor::TOP | LayerAnchor::LEFT,
+            ),
+            (
+                GridPosition::TopRight,
+                LayerAnchor::TOP | LayerAnchor::RIGHT,
+            ),
+            (
+                GridPosition::MiddleLeft,
+                LayerAnchor::TOP | LayerAnchor::LEFT,
+            ),
             (GridPosition::Center, LayerAnchor::TOP | LayerAnchor::LEFT),
-            (GridPosition::MiddleRight, LayerAnchor::TOP | LayerAnchor::RIGHT),
-            (GridPosition::BottomLeft, LayerAnchor::BOTTOM | LayerAnchor::LEFT),
-            (GridPosition::BottomCenter, LayerAnchor::BOTTOM | LayerAnchor::LEFT),
-            (GridPosition::BottomRight, LayerAnchor::BOTTOM | LayerAnchor::RIGHT),
+            (
+                GridPosition::MiddleRight,
+                LayerAnchor::TOP | LayerAnchor::RIGHT,
+            ),
+            (
+                GridPosition::BottomLeft,
+                LayerAnchor::BOTTOM | LayerAnchor::LEFT,
+            ),
+            (
+                GridPosition::BottomCenter,
+                LayerAnchor::BOTTOM | LayerAnchor::LEFT,
+            ),
+            (
+                GridPosition::BottomRight,
+                LayerAnchor::BOTTOM | LayerAnchor::RIGHT,
+            ),
         ];
 
         let test_resolutions = [
@@ -877,7 +1012,11 @@ height = 175
                     let (anchor, (top, right, bottom, left), (w, h), scale) =
                         cfg.calculate_geometry(screen_w, screen_h);
 
-                    assert_eq!(anchor, expected_layer_anchor, "Anchor mismatch for {:?} on {}x{}", pos, screen_w, screen_h);
+                    assert_eq!(
+                        anchor, expected_layer_anchor,
+                        "Anchor mismatch for {:?} on {}x{}",
+                        pos, screen_w, screen_h
+                    );
                     assert_eq!(w, exp_w);
                     assert_eq!(h, exp_h);
                     assert_eq!(scale, stage_info.font_scale);
@@ -902,7 +1041,10 @@ height = 175
                         GridPosition::Center => {
                             let exp_mid_left = ((screen_w as i32 - exp_w as i32) / 2).max(gutter);
                             let exp_mid_top = ((screen_h as i32 - exp_h as i32) / 2).max(gutter);
-                            assert_eq!((top, right, bottom, left), (exp_mid_top, 0, 0, exp_mid_left));
+                            assert_eq!(
+                                (top, right, bottom, left),
+                                (exp_mid_top, 0, 0, exp_mid_left)
+                            );
                         }
                         GridPosition::MiddleRight => {
                             let exp_mid_top = ((screen_h as i32 - exp_h as i32) / 2).max(gutter);
@@ -940,5 +1082,3 @@ height = 175
         assert_eq!(result1, result3);
     }
 }
-
-
