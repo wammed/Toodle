@@ -7,6 +7,7 @@ pub struct OutputEntry<O = WlOutput> {
     pub name: Option<String>,
     pub output: O,
     pub logical_size: Option<(u32, u32)>,
+    pub logical_position: Option<(i32, i32)>,
     pub scale_factor: Option<f64>,
 }
 
@@ -50,6 +51,7 @@ pub struct OutputManager<O = WlOutput> {
     outputs: Vec<OutputEntry<O>>,
     fallback_resolution: (u32, u32),
     current_resolved: Option<ResolvedOutput<O>>,
+    active_output: Option<O>,
 }
 
 impl<O: Clone + PartialEq> OutputManager<O> {
@@ -58,6 +60,7 @@ impl<O: Clone + PartialEq> OutputManager<O> {
             outputs: Vec::new(),
             fallback_resolution,
             current_resolved: None,
+            active_output: None,
         }
     }
 
@@ -77,6 +80,14 @@ impl<O: Clone + PartialEq> OutputManager<O> {
         self.fallback_resolution = res;
     }
 
+    pub fn active_output(&self) -> Option<&O> {
+        self.active_output.as_ref()
+    }
+
+    pub fn set_active_output(&mut self, output: Option<O>) {
+        self.active_output = output;
+    }
+
     pub fn handle_created(&mut self, output: O, name: Option<String>) {
         if let Some(entry) = self.outputs.iter_mut().find(|e| e.output == output) {
             if name.is_some() {
@@ -87,6 +98,7 @@ impl<O: Clone + PartialEq> OutputManager<O> {
                 name,
                 output,
                 logical_size: None,
+                logical_position: None,
                 scale_factor: None,
             });
         }
@@ -97,6 +109,7 @@ impl<O: Clone + PartialEq> OutputManager<O> {
         output: &O,
         name: Option<String>,
         logical_size: Option<(u32, u32)>,
+        logical_position: Option<(i32, i32)>,
         scale_factor: Option<f64>,
     ) {
         if let Some(entry) = self.outputs.iter_mut().find(|e| &e.output == output) {
@@ -106,6 +119,9 @@ impl<O: Clone + PartialEq> OutputManager<O> {
             if logical_size.is_some() {
                 entry.logical_size = logical_size;
             }
+            if logical_position.is_some() {
+                entry.logical_position = logical_position;
+            }
             if scale_factor.is_some() {
                 entry.scale_factor = scale_factor;
             }
@@ -114,12 +130,66 @@ impl<O: Clone + PartialEq> OutputManager<O> {
                 name,
                 output: output.clone(),
                 logical_size,
+                logical_position,
                 scale_factor,
             });
         }
     }
 
+    /// Authoritatively determine the active output:
+    /// 1. If an explicit primary connector name is provided (e.g. from `cosmic-randr` / compositor configuration),
+    ///    find the connected output with that matching connector name.
+    /// 2. If no primary name is specified or found, check for the output located at compositor global origin (0, 0)
+    ///    via `logical_position`.
+    /// 3. If neither applies and an active output was previously designated, retain it if still connected.
+    /// 4. Fallback to the first output with a confirmed logical size, or the first connected output.
+    pub fn determine_active_output(&self, primary_name: Option<&str>) -> Option<O> {
+        // Priority 1: Match connector name with authoritative primary display from cosmic-randr
+        if let Some(target) = primary_name {
+            let clean_target = clean_display_name(target);
+            if !clean_target.is_empty() {
+                for entry in &self.outputs {
+                    if let Some(name) = &entry.name
+                        && clean_display_name(name).eq_ignore_ascii_case(&clean_target)
+                    {
+                        return Some(entry.output.clone());
+                    }
+                }
+            }
+        }
+
+        // Priority 2: Match output located at compositor global origin (0, 0)
+        for entry in &self.outputs {
+            if entry.logical_position == Some((0, 0)) {
+                return Some(entry.output.clone());
+            }
+        }
+
+        // Priority 3: Retain existing active output if still present
+        if let Some(ref active) = self.active_output
+            && self.outputs.iter().any(|e| &e.output == active)
+        {
+            return Some(active.clone());
+        }
+
+        // Priority 4: Fallback to first output with confirmed logical size, or first connected output
+        self.outputs
+            .iter()
+            .find(|e| e.logical_size.is_some())
+            .map(|e| e.output.clone())
+            .or_else(|| self.outputs.first().map(|e| e.output.clone()))
+    }
+
+    /// Update and set the active output using authoritative determination.
+    pub fn update_active_output(&mut self, primary_name: Option<&str>) {
+        let active = self.determine_active_output(primary_name);
+        self.set_active_output(active);
+    }
+
     pub fn handle_removed(&mut self, output: &O) {
+        if self.active_output.as_ref() == Some(output) {
+            self.active_output = None;
+        }
         self.outputs.retain(|e| &e.output != output);
     }
 
@@ -147,12 +217,21 @@ impl<O: Clone + PartialEq> OutputManager<O> {
             }
         }
 
-        // Active output fallback: if any output is connected, its logical size can be used,
-        // otherwise use fallback_resolution
+        // Active output fallback:
+        // 1. If an active output is explicitly designated, use its logical size.
+        // 2. Otherwise, use the first output that has a known logical size.
+        // 3. Finally, fall back to self.fallback_resolution.
         let active_size = self
-            .outputs
-            .first()
-            .and_then(|o| o.logical_size)
+            .active_output
+            .as_ref()
+            .and_then(|active| self.outputs.iter().find(|e| &e.output == active))
+            .and_then(|e| e.logical_size)
+            .or_else(|| {
+                self.outputs
+                    .iter()
+                    .find(|o| o.logical_size.is_some())
+                    .and_then(|o| o.logical_size)
+            })
             .unwrap_or(self.fallback_resolution);
 
         ResolvedOutput::Active {
@@ -253,6 +332,14 @@ pub fn detect_displays() -> Vec<DetectedDisplay> {
 
     let text = String::from_utf8_lossy(&output.stdout);
     parse_cosmic_randr_list(&text)
+}
+
+/// Query the authoritative primary output connector name from cosmic-randr, if available.
+pub fn detect_primary_output_name() -> Option<String> {
+    detect_displays()
+        .into_iter()
+        .find(|d| d.is_enabled && d.is_primary)
+        .map(|d| d.name)
 }
 
 /// Detect primary or active screen resolution, defaulting to (2560, 1440) WQHD
@@ -421,7 +508,7 @@ mod tests {
 
         // Connect DP-1 (ID 1)
         mgr.handle_created(1, Some("DP-1".to_string()));
-        mgr.handle_info_update(&1, Some("DP-1".to_string()), Some((2560, 1440)), Some(1.0));
+        mgr.handle_info_update(&1, Some("DP-1".to_string()), Some((2560, 1440)), Some((0, 0)), Some(1.0));
 
         // Target is DP-1
         let (resolved, changed) = mgr.update_target(Some("DP-1"));
@@ -449,11 +536,11 @@ mod tests {
 
         // Monitor A: DP-1 = 1920x1080
         mgr.handle_created(1, Some("DP-1".to_string()));
-        mgr.handle_info_update(&1, Some("DP-1".to_string()), Some((1920, 1080)), Some(1.0));
+        mgr.handle_info_update(&1, Some("DP-1".to_string()), Some((1920, 1080)), Some((0, 0)), Some(1.0));
 
         // Monitor B: DP-2 = 3840x2160
         mgr.handle_created(2, Some("DP-2".to_string()));
-        mgr.handle_info_update(&2, Some("DP-2".to_string()), Some((3840, 2160)), Some(1.0));
+        mgr.handle_info_update(&2, Some("DP-2".to_string()), Some((3840, 2160)), Some((1920, 0)), Some(1.0));
 
         // Target A gets exactly 1920x1080
         let res_a = mgr.resolve(Some("DP-1"));
@@ -474,7 +561,7 @@ mod tests {
 
         // User configured target "DP-2", but only DP-1 is connected initially
         mgr.handle_created(1, Some("DP-1".to_string()));
-        mgr.handle_info_update(&1, Some("DP-1".to_string()), Some((1920, 1080)), Some(1.0));
+        mgr.handle_info_update(&1, Some("DP-1".to_string()), Some((1920, 1080)), Some((0, 0)), Some(1.0));
 
         let (init_resolved, _) = mgr.update_target(Some("DP-2"));
         // Falls back to Active because DP-2 is not yet connected
@@ -487,7 +574,7 @@ mod tests {
 
         // Now DP-2 is hot-plugged!
         mgr.handle_created(2, Some("DP-2".to_string()));
-        mgr.handle_info_update(&2, Some("DP-2".to_string()), Some((2560, 1440)), Some(1.0));
+        mgr.handle_info_update(&2, Some("DP-2".to_string()), Some((2560, 1440)), Some((1920, 0)), Some(1.0));
 
         // update_target must detect transition from Active -> Specific
         let (plugged_resolved, changed) = mgr.update_target(Some("DP-2"));
@@ -516,7 +603,7 @@ mod tests {
 
         // Now DP-2 is re-connected!
         mgr.handle_created(3, Some("DP-2".to_string()));
-        mgr.handle_info_update(&3, Some("DP-2".to_string()), Some((2560, 1440)), Some(1.0));
+        mgr.handle_info_update(&3, Some("DP-2".to_string()), Some((2560, 1440)), Some((1920, 0)), Some(1.0));
 
         // update_target must detect re-connection!
         let (reconnected_resolved, changed) = mgr.update_target(Some("DP-2"));
@@ -529,5 +616,89 @@ mod tests {
                 logical_size: (2560, 1440),
             }
         );
+    }
+
+    #[test]
+    fn test_output_manager_active_fallback_with_differing_resolutions() {
+        let mut mgr = OutputManager::<u32>::new((1280, 720));
+
+        // DP-1 = 1920x1080 (output id: 1)
+        mgr.handle_created(1, Some("DP-1".to_string()));
+        mgr.handle_info_update(&1, Some("DP-1".to_string()), Some((1920, 1080)), Some((0, 0)), Some(1.0));
+
+        // DP-2 = 3840x2160 (output id: 2)
+        mgr.handle_created(2, Some("DP-2".to_string()));
+        mgr.handle_info_update(&2, Some("DP-2".to_string()), Some((3840, 2160)), Some((1920, 0)), Some(1.0));
+
+        // When active output is set to DP-2 (id: 2)
+        mgr.set_active_output(Some(2));
+
+        // Active fallback should resolve geometry matching DP-2 (3840x2160)
+        let resolved = mgr.resolve(None);
+        assert_eq!(
+            resolved,
+            ResolvedOutput::Active {
+                logical_size: (3840, 2160)
+            }
+        );
+        assert_eq!(resolved.logical_size(), (3840, 2160));
+
+        // And if active output is set to DP-1 (id: 1)
+        mgr.set_active_output(Some(1));
+        let resolved_1 = mgr.resolve(None);
+        assert_eq!(
+            resolved_1,
+            ResolvedOutput::Active {
+                logical_size: (1920, 1080)
+            }
+        );
+        assert_eq!(resolved_1.logical_size(), (1920, 1080));
+    }
+
+    #[test]
+    fn test_runtime_event_sequence_active_output_detection_via_primary_name() {
+        let mut mgr = OutputManager::<u32>::new((1280, 720));
+
+        // Created DP-1
+        mgr.handle_created(1, Some("DP-1".to_string()));
+        // InfoUpdate DP-1 = 1920x1080 at (1920, 0)
+        mgr.handle_info_update(&1, Some("DP-1".to_string()), Some((1920, 1080)), Some((1920, 0)), Some(1.0));
+
+        // Created DP-2
+        mgr.handle_created(2, Some("DP-2".to_string()));
+        // InfoUpdate DP-2 = 3840x2160 at (0, 0)
+        mgr.handle_info_update(&2, Some("DP-2".to_string()), Some((3840, 2160)), Some((0, 0)), Some(1.0));
+
+        // Runtime detection path: cosmic-randr designates DP-2 as primary
+        let active = mgr.determine_active_output(Some("DP-2"));
+        assert_eq!(active, Some(2));
+        mgr.set_active_output(active);
+
+        // resolve(None) -> 3840x2160
+        let (resolved, changed) = mgr.update_target(None);
+        assert_eq!(resolved.logical_size(), (3840, 2160));
+        assert!(changed);
+    }
+
+    #[test]
+    fn test_runtime_event_sequence_active_output_detection_via_origin_position() {
+        let mut mgr = OutputManager::<u32>::new((1280, 720));
+
+        // Created DP-1: 1920x1080 at (1920, 0)
+        mgr.handle_created(1, Some("DP-1".to_string()));
+        mgr.handle_info_update(&1, Some("DP-1".to_string()), Some((1920, 1080)), Some((1920, 0)), Some(1.0));
+
+        // Created DP-2: 3840x2160 at (0, 0) (Wayland global compositor origin)
+        mgr.handle_created(2, Some("DP-2".to_string()));
+        mgr.handle_info_update(&2, Some("DP-2".to_string()), Some((3840, 2160)), Some((0, 0)), Some(1.0));
+
+        // Runtime detection path: no cosmic-randr primary name, falls back to Wayland origin (0, 0)
+        let active = mgr.determine_active_output(None);
+        assert_eq!(active, Some(2), "Output located at global (0, 0) must be designated active");
+        mgr.set_active_output(active);
+
+        // resolve(None) -> 3840x2160
+        let resolved = mgr.resolve(None);
+        assert_eq!(resolved.logical_size(), (3840, 2160));
     }
 }

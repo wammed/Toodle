@@ -913,12 +913,12 @@ Design:
   Output selection is a supported configuration concept.
 
 Implementation:
-  OutputManager dynamically resolves connected Wayland outputs from cosmic-randr,
-  matching the configured output (e.g. "DP-1") or safely falling back to primary/first available.
+  OutputManager dynamically resolves connected Wayland outputs from compositor metadata,
+  matching the configured output (e.g. "DP-1") or safely falling back to active/primary.
   Per-output dimensions are isolated during geometry calculations.
 
 Status:
-  Implemented (Phase 5). Multi-monitor fractional scaling and mixed-DPI remains an unverified physical hardware item.
+  Implemented (Phase 5). Physical hardware verified on dual identical 2560×1440 (DP-1 / DP-2) displays under Wayland. Multi-monitor fractional scaling, mixed-DPI, and differing resolutions remain unverified future robustness items.
 ```
 
 複数 Display へ同時に Widget を表示することは行わない。
@@ -1016,7 +1016,7 @@ v0.3 は「現在の実装と設計を同期する」ための文書であり、
 
 ## 25.1 Display Output Binding (Resolved in Phase 5)
 
-`OutputManager` 状態機械により実装済み。検出された Wayland 出力先一覧から `DisplayConfig::output` を動的に解決し、特定コネクタへのバインド、プライマリ画面への自動フォールバック、ホットプラグ再バインド、および画面個別解像度管理をサポート。（マルチモニターにおける分数スケーリングや混在 DPI の実機検証は継続課題）。
+`OutputManager` 状態機械により実装済み。検出された Wayland 出力先一覧から `DisplayConfig::output` を動的に解決し、特定コネクタへのバインド、アクティブ/プライマリ画面への自動フォールバック、ホットプラグ再バインド、および画面個別解像度管理をサポート。Wayland 環境下の同一機種 2560×1440 × 2（`DP-1`, `DP-2`）における出力先切替、表示位置、表示サイズの実機検証が完了。（異なる解像度の混在、分数スケーリングや混在 DPI の実機検証は継続課題）。
 
 ## 25.2 Independent Weather TTL
 
@@ -1032,9 +1032,9 @@ Current 30min / Forecast 3h の設計値は存在するが、Weather Service の
 
 Location Name からの自動 Geocoding は未実装。
 
-## 25.5 Request Generation / Stale Result Protection
+## 25.5 Request Generation / Stale Result Protection (Resolved in Phase 5)
 
-Location 変更時の非同期 Weather Request に対して、古い Request の結果を新しい Location の表示へ適用しないための明示的な Request ID / Generation 管理は今後の堅牢化候補とする。
+`weather_generation` シーケンス ID および `WeatherStateManager` により実装完了。非同期リクエスト開始時に単調増加する世代IDを発行し、結果受信時に現在の世代と一致しない古いレスポンスを破棄することで、ロケーション変更時や再試行時の古い非同期レスポンスによる上書き競合を完全に遮断。
 
 ## 25.6 Popup Dismissal
 

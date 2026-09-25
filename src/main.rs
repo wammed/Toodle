@@ -39,6 +39,7 @@ struct ToodleApp {
     weather_service: Arc<WeatherService>,
     weather: Option<WeatherData>,
     weather_error: bool,
+    weather_generation: u64,
     widget_surface_id: SurfaceId,
     popup_surface_id: Option<SurfaceId>,
     active_popup: Option<ActivePopup>,
@@ -55,7 +56,10 @@ enum Message {
     EscapePressed,
     ConfigReloaded(Config),
     FetchWeather,
-    WeatherUpdated(Result<WeatherData, WeatherError>),
+    WeatherUpdated {
+        generation: u64,
+        result: Result<WeatherData, WeatherError>,
+    },
     WaylandOutput(OutputEvent, WlOutput),
 }
 
@@ -171,6 +175,9 @@ impl Application for ToodleApp {
 
         let fallback_res = toodle::display::detect_primary_resolution();
         let mut output_manager: OutputManager<WlOutput> = OutputManager::new(fallback_res);
+        let primary_name = toodle::display::detect_primary_output_name();
+        let initial_active = output_manager.determine_active_output(primary_name.as_deref());
+        output_manager.set_active_output(initial_active);
         let (initial_resolved, _) = output_manager.update_target(config.display.output.as_deref());
         let (screen_w, screen_h) = initial_resolved.logical_size();
         let (anchor, (top, right, bottom, left), (w, h), _scale) =
@@ -208,7 +215,12 @@ impl Application for ToodleApp {
             .collect();
 
         let weather_service = Arc::new(WeatherService::new());
-        let cached_weather = WeatherCache::load().map(|c| c.data);
+        let cached_weather = WeatherCache::load()
+            .filter(|c| {
+                c.is_location_match(config.weather.latitude, config.weather.longitude)
+                    && c.is_current_valid()
+            })
+            .map(|c| c.data);
 
         let initial_weather_task = {
             let s = weather_service.clone();
@@ -216,7 +228,10 @@ impl Application for ToodleApp {
             let lon = config.weather.longitude;
             Task::future(async move {
                 let res = s.get_weather(lat, lon).await;
-                cosmic::Action::from(Message::WeatherUpdated(res))
+                cosmic::Action::from(Message::WeatherUpdated {
+                    generation: 1,
+                    result: res,
+                })
             })
         };
 
@@ -233,6 +248,7 @@ impl Application for ToodleApp {
             weather_service,
             weather: cached_weather,
             weather_error: false,
+            weather_generation: 1,
             widget_surface_id,
             popup_surface_id: None,
             active_popup: None,
@@ -248,17 +264,30 @@ impl Application for ToodleApp {
             Message::Tick => Task::none(),
 
             Message::FetchWeather => {
+                self.weather_generation += 1;
+                let generation = self.weather_generation;
                 let s = self.weather_service.clone();
                 let lat = self.config.weather.latitude;
                 let lon = self.config.weather.longitude;
                 Task::future(async move {
                     let res = s.get_weather(lat, lon).await;
-                    cosmic::Action::from(Message::WeatherUpdated(res))
+                    cosmic::Action::from(Message::WeatherUpdated {
+                        generation,
+                        result: res,
+                    })
                 })
             }
 
-            Message::WeatherUpdated(res) => {
-                match res {
+            Message::WeatherUpdated { generation, result } => {
+                if generation != self.weather_generation {
+                    tracing::info!(
+                        "Discarding stale weather update from generation {} (active generation: {})",
+                        generation,
+                        self.weather_generation
+                    );
+                    return Task::none();
+                }
+                match result {
                     Ok(data) => {
                         info!(
                             "Weather updated: {} {:.1}°C",
@@ -326,13 +355,8 @@ impl Application for ToodleApp {
                 }
                 self.active_popup = None;
 
-                // Initialize Edit State with current layout and screen size
-                let (screen_w, screen_h) = self.target_screen_dimensions();
-                self.state = WidgetState::Edit(EditState::new(
-                    self.config.layout.clone(),
-                    screen_w,
-                    screen_h,
-                ));
+                // Initialize Edit State with current layout
+                self.state = WidgetState::Edit(EditState::new(self.config.layout.clone()));
 
                 // Open independent Edit Panel on Layer::Top
                 let edit_panel_id = SurfaceId::unique();
@@ -629,10 +653,9 @@ impl Application for ToodleApp {
                             > 0.0001;
 
                 // Handle edit mode conflict: if user is currently editing layout, preserve their in-progress layout
-                let in_edit_mode = matches!(self.state, WidgetState::Edit(_));
-                if in_edit_mode {
+                if let WidgetState::Edit(ref edit_state) = self.state {
                     info!("External config reloaded while in Edit Mode; preserving active in-progress edit layout");
-                    let active_edit_layout = self.config.layout.clone();
+                    let active_edit_layout = edit_state.layout.clone();
                     self.config = new_config;
                     self.config.layout = active_edit_layout;
                 } else {
@@ -644,12 +667,17 @@ impl Application for ToodleApp {
                 if location_changed {
                     self.weather = None;
                     self.weather_error = false;
+                    self.weather_generation += 1;
+                    let generation = self.weather_generation;
                     let s = self.weather_service.clone();
                     let lat = self.config.weather.latitude;
                     let lon = self.config.weather.longitude;
                     tasks.push(Task::future(async move {
                         let res = s.get_weather(lat, lon).await;
-                        cosmic::Action::from(Message::WeatherUpdated(res))
+                        cosmic::Action::from(Message::WeatherUpdated {
+                            generation,
+                            result: res,
+                        })
                     }));
                 }
 
@@ -658,6 +686,11 @@ impl Application for ToodleApp {
                         "Display target changed to {:?}. Recreating widget surface.",
                         self.config.display.output
                     );
+                    let primary_name = toodle::display::detect_primary_output_name();
+                    let active = self
+                        .output_manager
+                        .determine_active_output(primary_name.as_deref());
+                    self.output_manager.set_active_output(active);
                     tasks.push(self.recreate_widget());
                     return Task::batch(tasks);
                 }
@@ -695,6 +728,8 @@ impl Application for ToodleApp {
                     OutputEvent::Created(info_opt) => {
                         let name = info_opt.and_then(|info| info.name);
                         self.output_manager.handle_created(wl_output, name);
+                        // Defer surface recreation until InfoUpdate delivers confirmed geometry
+                        return Task::none();
                     }
                     OutputEvent::InfoUpdate(info) => {
                         let logical_size = info.logical_size.and_then(|(w, h)| {
@@ -704,15 +739,29 @@ impl Application for ToodleApp {
                                 None
                             }
                         });
+                        let logical_position = info.logical_position.or(Some(info.location));
                         self.output_manager.handle_info_update(
                             &wl_output,
                             info.name,
                             logical_size,
+                            logical_position,
                             None,
                         );
+
+                        // Runtime wiring: Authoritatively determine and set active output
+                        let primary_name = toodle::display::detect_primary_output_name();
+                        let active = self
+                            .output_manager
+                            .determine_active_output(primary_name.as_deref());
+                        self.output_manager.set_active_output(active);
                     }
                     OutputEvent::Removed => {
                         self.output_manager.handle_removed(&wl_output);
+                        let primary_name = toodle::display::detect_primary_output_name();
+                        let active = self
+                            .output_manager
+                            .determine_active_output(primary_name.as_deref());
+                        self.output_manager.set_active_output(active);
                     }
                 }
 

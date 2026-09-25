@@ -208,7 +208,7 @@
 設計書 v0.3 Section 25 に基づき、現在確認されている設計とコードの差分・未実装項目を以下に明記します。これらを「実装済み」と誤認せず、今後のフェーズで計画的に対応します：
 
 1. **Display Output 接続**:
-   - `DisplayConfig::output`（例: `"DP-1"`）は設定として存在するが、現在の Layer Surface 生成では `IcedOutput::Active` が固定で使用されている（特定ディスプレイへのバインドが未接続）。
+   - **解決・実機検証完了**: `OutputManager` 状態機械により特定コネクタ名の一致、アクティブ/プライマリへのフォールバック、ホットプラグ再接続、画面個別解像度管理を実装。Wayland 環境下の同一機種 2560×1440 × 2（`DP-1`, `DP-2`）における出力先切替、表示位置、表示サイズの実機検証が完了。異なる解像度混在、mixed DPI、分数スケーリングは未検証事項として継続。
 2. **Weather Current / Forecast Cache の独立 TTL 分離**:
    - 設計値（現在天気 30分 / 予報 3時間）は定義されているが、`WeatherService` の実際の取得・キャッシュ判定単位が完全に分離されておらず、一括フェッチ・判定となっている。
 3. **Weather 429 / 5xx Exponential Backoff**:
@@ -216,7 +216,7 @@
 4. **Geocoding 自動解決**:
    - 現在は都市プリセット（Tokyo, London 等）または手動の緯度・経度入力のみ。Location Name 文字列からの自動緯度・経度解決は未実装。
 5. **Request Generation / Stale Result 保護**:
-   - 都市変更時に以前の都市の遅延レスポンスが新都市の表示を上書きしないための Request Generation ID 管理は未導入。
+   - **解決済み**: `weather_generation` シーケンス ID および `WeatherStateManager` を導入し、非同期リクエストに世代IDを付与。都市変更前や古いリクエストの遅延レスポンスを破棄する機構を完全実装。
 6. **Popup Dismissal**:
    - ポップアップのフォーカス喪失（focus loss）や領域外クリック（outside click）による自動閉鎖は、実機挙動の検証および実装仕様の確定が必要。
 7. **COSMIC Autostart時の入力初期化タイミング問題**:
@@ -300,15 +300,14 @@ cargo build --release
 新設計書 v0.3 Section 28 に基づく今後の作業優先度：
 
 ### Phase 5 — Robustness (堅牢化 & 未接続機能の解消)
-1. **Display Output の実装接続**: **完了** (`OutputManager` 状態機械により、コネクタ名マッチング、プライマリフォールバック、ホットプラグ再接続、画面個別解像度管理を実装完了。マルチモニターでの分数スケーリング/混在DPIの実機検証は継続課題)。
-2. **Popup Dismissal の実機検証・実装**:
+1. **Display Output の実装接続 & 実機検証**: **完了** (`OutputManager` 状態機械により、コネクタ名マッチング、アクティブ/プライマリフォールバック、ホットプラグ再接続、画面個別解像度管理を実装完了。Wayland 環境下の同一 2560×1440 × 2 [DP-1 / DP-2] 実機検証完了。マルチモニターでの分数スケーリング/混在DPIの実機検証は継続課題)。
+2. **Weather Request Generation 管理**: **完了** (`weather_generation` シーケンス ID および `WeatherStateManager` により古い非同期レスポンスの上書きを完全防止。起動時キャッシュの座標＆有効期限検証、日別予報の厳格検証、一意テンポラリファイルによる並行保存安全性も実装完了)。
+3. **Popup Dismissal の実機検証・実装**:
    - 外側クリック / フォーカス喪失時の自動クローズ機構の検証と実装。
-3. **Weather Current / Forecast Cache の独立化**:
+4. **Weather Current / Forecast Cache の独立化**:
    - 現在天気（30分）と週間予報（3時間）の取得・キャッシュ判定を完全独立化。
-4. **Weather 429 / 5xx Backoff の実装**:
+5. **Weather 429 / 5xx Backoff の実装**:
    - レート制限やサーバーエラー時の指数バックオフリトライ。
-5. **Weather Request Generation 管理**:
-   - ロケーション変更時の stale な遅延レスポンス破棄機構。
 6. **Geocoding 自動解決**:
    - Open-Meteo Geocoding API を用いた都市名入力からの自動座標解決。
 

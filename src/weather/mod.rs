@@ -12,4 +12,4 @@ pub use provider::{
     CurrentWeather, DailyForecast, WeatherData, WeatherError, WeatherProvider, wmo_code_to_icon,
     wmo_code_to_text,
 };
-pub use service::{WeatherService, weather_update_stream};
+pub use service::{WeatherService, WeatherStateManager, weather_update_stream};

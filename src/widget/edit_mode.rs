@@ -16,18 +16,14 @@ pub enum EditMessage {
 pub struct EditState {
     pub layout: LayoutConfig,
     pub font_scale: f32,
-    pub screen_w: u32,
-    pub screen_h: u32,
 }
 
 impl EditState {
-    pub fn new(current: LayoutConfig, screen_w: u32, screen_h: u32) -> Self {
+    pub fn new(current: LayoutConfig) -> Self {
         let stage_info = get_size_stage(current.size_stage);
         Self {
             layout: current,
             font_scale: stage_info.font_scale,
-            screen_w,
-            screen_h,
         }
     }
 

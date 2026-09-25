@@ -37,7 +37,10 @@ This document details the functional capabilities and features of **Toodle**, th
   - Current weather cache policy: 30 minutes validity.
   - Forecast cache policy: 3 hours validity.
   - Geographical coordinate validation (`is_location_match`) ensures that switching cities immediately bypasses outdated cache.
-  - Strict response validation: missing temperature or weather code returns a parse error instead of silently defaulting to `0.0°C` / Clear sky. Array lengths across daily forecast fields are strictly verified.
+  - Request generation tracking (`WeatherStateManager`) drops delayed responses from older queries, preventing stale data overwrites.
+  - Startup cache validation ensures that cached data matches current configured coordinates and satisfies freshness before being displayed.
+  - Strict response validation: missing temperature, weather code, or incomplete daily forecast arrays (less than 7 days) returns a parse error instead of silently defaulting.
+  - Concurrent cache write protection via unique temporary files (`.pid.nanos.tmp`) and atomic rename, with diagnostic logging on save failures.
   - Finite coordinate bounds checking (`-90.0..=90.0` lat, `-180.0..=180.0` lon) prevents invalid network requests.
   - Clock-skew protection prevents cache freezing during system time adjustments.
   - Graceful offline fallback: if network requests fail, the last valid cached data for the current coordinates is displayed automatically.
@@ -113,7 +116,8 @@ A native XDG Toplevel application (`720 x 780`, solid dark background) providing
 
 ### 5.4 Display Tab
 - **Target Display Output**: Wayland output name (e.g. `"DP-1"`).
-- **Dynamic Output Resolution**: Resolved dynamically by `OutputManager`; matches connected outputs, seamlessly falls back to primary/first available output if disconnected, and isolates geometry calculations per display. (Multi-monitor fractional scaling and mixed-DPI remain unverified on physical hardware).
+- **Dynamic Output Resolution**: Resolved dynamically by `OutputManager`; matches connected outputs, seamlessly falls back to active/primary output if disconnected, and isolates geometry calculations per display.
+- **Physical Verification**: Tested and verified on physical hardware for dual identical 2560×1440 displays (`DP-1` and `DP-2`), confirming target switching, display position, and size. (Multi-monitor fractional scaling, mixed DPI, and differing resolutions remain unverified).
 
 ---
 

@@ -70,7 +70,9 @@ impl WeatherService {
         match self.provider.fetch_weather(lat, lon).await {
             Ok(data) => {
                 let cached = CachedWeather::new(data.clone(), lat, lon);
-                let _ = WeatherCache::save_to(&cached, &cache_p);
+                if let Err(e) = WeatherCache::save_to(&cached, &cache_p) {
+                    warn!("Failed to persist weather cache to {:?}: {}", cache_p, e);
+                }
                 Ok(data)
             }
             Err(err) => {
@@ -107,6 +109,65 @@ pub fn weather_update_stream() -> impl futures::Stream<Item = ()> {
         tokio::time::sleep(tokio::time::Duration::from_secs(1800)).await;
         Some(((), ()))
     })
+}
+/// State manager ensuring stale asynchronous weather responses are rejected
+/// and never overwrite newer state.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct WeatherStateManager {
+    pub current_generation: u64,
+    pub weather: Option<WeatherData>,
+    pub weather_error: bool,
+}
+
+impl WeatherStateManager {
+    pub fn new() -> Self {
+        Self {
+            current_generation: 0,
+            weather: None,
+            weather_error: false,
+        }
+    }
+
+    pub fn with_initial(cached: Option<WeatherData>) -> Self {
+        Self {
+            current_generation: 1,
+            weather: cached,
+            weather_error: false,
+        }
+    }
+
+    pub fn next_generation(&mut self) -> u64 {
+        self.current_generation += 1;
+        self.current_generation
+    }
+
+    pub fn reset_for_location_change(&mut self) -> u64 {
+        self.weather = None;
+        self.weather_error = false;
+        self.next_generation()
+    }
+
+    pub fn apply_update(
+        &mut self,
+        generation: u64,
+        result: Result<WeatherData, WeatherError>,
+    ) -> bool {
+        if generation != self.current_generation {
+            return false;
+        }
+        match result {
+            Ok(data) => {
+                self.weather = Some(data);
+                self.weather_error = false;
+            }
+            Err(_) => {
+                if self.weather.is_none() {
+                    self.weather_error = true;
+                }
+            }
+        }
+        true
+    }
 }
 
 #[cfg(test)]
@@ -231,5 +292,60 @@ mod tests {
             WeatherError::Parse(msg) => assert!(msg.contains("Invalid coordinates"), "{msg}"),
             _ => panic!("Expected WeatherError::Parse"),
         }
+    }
+
+    #[test]
+    fn test_stale_weather_generation_rejection() {
+        let mut mgr = WeatherStateManager::with_initial(None);
+        assert_eq!(mgr.current_generation, 1);
+
+        // Generation 1 initiated for Tokyo
+        let gen_tokyo = mgr.next_generation();
+        assert_eq!(gen_tokyo, 2);
+
+        // User changes location to London -> Generation 3 initiated
+        let gen_london = mgr.reset_for_location_change();
+        assert_eq!(gen_london, 3);
+        assert!(mgr.weather.is_none());
+
+        let tokyo_data = WeatherData {
+            current: CurrentWeather {
+                temperature_celsius: 25.0,
+                weather_code: 0,
+                condition_text: "Clear sky (Tokyo)".into(),
+            },
+            daily: Vec::new(),
+        };
+
+        let london_data = WeatherData {
+            current: CurrentWeather {
+                temperature_celsius: 14.0,
+                weather_code: 61,
+                condition_text: "Rain (London)".into(),
+            },
+            daily: Vec::new(),
+        };
+
+        // London response arrives first for Generation 3
+        let applied_london = mgr.apply_update(gen_london, Ok(london_data));
+        assert!(applied_london);
+        assert_eq!(
+            mgr.weather.as_ref().unwrap().current.condition_text,
+            "Rain (London)"
+        );
+
+        // Delayed Tokyo response arrives late for Generation 2
+        let applied_tokyo = mgr.apply_update(gen_tokyo, Ok(tokyo_data));
+        assert!(!applied_tokyo, "Stale Generation 2 response must be rejected");
+
+        // Weather state must remain London!
+        assert_eq!(
+            mgr.weather.as_ref().unwrap().current.condition_text,
+            "Rain (London)"
+        );
+        assert_eq!(
+            mgr.weather.as_ref().unwrap().current.temperature_celsius,
+            14.0
+        );
     }
 }

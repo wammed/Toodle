@@ -129,34 +129,51 @@ pub(crate) fn parse_open_meteo_response(
     })?;
     let condition_text = wmo_code_to_text(code).to_string();
 
-    let mut daily_forecasts = Vec::new();
-    if let Some(daily) = om.daily {
-        let times = daily.time.unwrap_or_default();
-        let codes = daily.weather_code.unwrap_or_default();
-        let maxs = daily.temperature_2m_max.unwrap_or_default();
-        let mins = daily.temperature_2m_min.unwrap_or_default();
+    let daily = om
+        .daily
+        .ok_or_else(|| WeatherError::Parse("Missing 'daily' in Open-Meteo response".into()))?;
 
-        let len = times.len();
-        if codes.len() != len || maxs.len() != len || mins.len() != len {
-            return Err(WeatherError::Parse(format!(
-                "Mismatched daily forecast array lengths: time={}, codes={}, maxs={}, mins={}",
-                len,
-                codes.len(),
-                maxs.len(),
-                mins.len()
-            )));
-        }
+    let times = daily
+        .time
+        .ok_or_else(|| WeatherError::Parse("Missing 'daily.time' in Open-Meteo response".into()))?;
+    let codes = daily.weather_code.ok_or_else(|| {
+        WeatherError::Parse("Missing 'daily.weather_code' in Open-Meteo response".into())
+    })?;
+    let maxs = daily.temperature_2m_max.ok_or_else(|| {
+        WeatherError::Parse("Missing 'daily.temperature_2m_max' in Open-Meteo response".into())
+    })?;
+    let mins = daily.temperature_2m_min.ok_or_else(|| {
+        WeatherError::Parse("Missing 'daily.temperature_2m_min' in Open-Meteo response".into())
+    })?;
 
-        for i in 0..len {
-            let d_code = codes[i];
-            daily_forecasts.push(DailyForecast {
-                date: times[i].clone(),
-                weather_code: d_code,
-                condition_text: wmo_code_to_text(d_code).to_string(),
-                temp_min_celsius: mins[i],
-                temp_max_celsius: maxs[i],
-            });
-        }
+    let len = times.len();
+    if len < 7 {
+        return Err(WeatherError::Parse(format!(
+            "Insufficient daily forecast entries: expected at least 7 days, got {}",
+            len
+        )));
+    }
+
+    if codes.len() != len || maxs.len() != len || mins.len() != len {
+        return Err(WeatherError::Parse(format!(
+            "Mismatched daily forecast array lengths: time={}, codes={}, maxs={}, mins={}",
+            len,
+            codes.len(),
+            maxs.len(),
+            mins.len()
+        )));
+    }
+
+    let mut daily_forecasts = Vec::with_capacity(len);
+    for i in 0..len {
+        let d_code = codes[i];
+        daily_forecasts.push(DailyForecast {
+            date: times[i].clone(),
+            weather_code: d_code,
+            condition_text: wmo_code_to_text(d_code).to_string(),
+            temp_min_celsius: mins[i],
+            temp_max_celsius: maxs[i],
+        });
     }
 
     Ok(WeatherData {
@@ -256,10 +273,13 @@ mod tests {
                 "weather_code": 1
             },
             "daily": {
-                "time": ["2026-09-24", "2026-09-25"],
-                "weather_code": [0, 61],
-                "temperature_2m_max": [25.0, 22.0],
-                "temperature_2m_min": [18.0, 16.0]
+                "time": [
+                    "2026-09-24", "2026-09-25", "2026-09-26", "2026-09-27",
+                    "2026-09-28", "2026-09-29", "2026-09-30"
+                ],
+                "weather_code": [0, 61, 2, 3, 45, 71, 80],
+                "temperature_2m_max": [25.0, 22.0, 23.0, 21.0, 20.0, 15.0, 18.0],
+                "temperature_2m_min": [18.0, 16.0, 17.0, 15.0, 14.0, 10.0, 12.0]
             }
         }"#;
 
@@ -267,7 +287,7 @@ mod tests {
         assert_eq!(res.current.temperature_celsius, 21.5);
         assert_eq!(res.current.weather_code, 1);
         assert_eq!(res.current.condition_text, "Mainly clear");
-        assert_eq!(res.daily.len(), 2);
+        assert_eq!(res.daily.len(), 7);
         assert_eq!(res.daily[0].date, "2026-09-24");
         assert_eq!(res.daily[0].temp_max_celsius, 25.0);
         assert_eq!(res.daily[0].temp_min_celsius, 18.0);
@@ -310,7 +330,44 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_open_meteo_json_mismatched_daily_arrays() {
+    fn test_parse_open_meteo_json_missing_daily() {
+        let json = r#"{
+            "current": {
+                "temperature_2m": 19.0,
+                "weather_code": 0
+            }
+        }"#;
+
+        let err = parse_open_meteo_json(json).unwrap_err();
+        match err {
+            WeatherError::Parse(msg) => {
+                assert!(msg.contains("Missing 'daily'"), "Expected missing daily error: {msg}");
+            }
+            _ => panic!("Expected WeatherError::Parse, got {:?}", err),
+        }
+    }
+
+    #[test]
+    fn test_parse_open_meteo_json_empty_daily() {
+        let json = r#"{
+            "current": {
+                "temperature_2m": 19.0,
+                "weather_code": 0
+            },
+            "daily": {}
+        }"#;
+
+        let err = parse_open_meteo_json(json).unwrap_err();
+        match err {
+            WeatherError::Parse(msg) => {
+                assert!(msg.contains("Missing 'daily.time'"), "Expected missing daily.time error: {msg}");
+            }
+            _ => panic!("Expected WeatherError::Parse, got {:?}", err),
+        }
+    }
+
+    #[test]
+    fn test_parse_open_meteo_json_insufficient_daily_days() {
         let json = r#"{
             "current": {
                 "temperature_2m": 19.0,
@@ -318,9 +375,36 @@ mod tests {
             },
             "daily": {
                 "time": ["2026-09-24", "2026-09-25"],
-                "weather_code": [0],
+                "weather_code": [0, 1],
                 "temperature_2m_max": [25.0, 22.0],
                 "temperature_2m_min": [18.0, 16.0]
+            }
+        }"#;
+
+        let err = parse_open_meteo_json(json).unwrap_err();
+        match err {
+            WeatherError::Parse(msg) => {
+                assert!(msg.contains("Insufficient daily forecast entries"), "Expected insufficient days error: {msg}");
+            }
+            _ => panic!("Expected WeatherError::Parse, got {:?}", err),
+        }
+    }
+
+    #[test]
+    fn test_parse_open_meteo_json_mismatched_daily_arrays() {
+        let json = r#"{
+            "current": {
+                "temperature_2m": 19.0,
+                "weather_code": 2
+            },
+            "daily": {
+                "time": [
+                    "2026-09-24", "2026-09-25", "2026-09-26", "2026-09-27",
+                    "2026-09-28", "2026-09-29", "2026-09-30"
+                ],
+                "weather_code": [0, 1, 2, 3, 4, 5, 6],
+                "temperature_2m_max": [25.0, 22.0, 20.0],
+                "temperature_2m_min": [18.0, 16.0, 14.0]
             }
         }"#;
 
