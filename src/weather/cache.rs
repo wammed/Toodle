@@ -81,18 +81,14 @@ impl WeatherCache {
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent)?;
         }
-        let serialized =
-            serde_json::to_string(cached).map_err(std::io::Error::other)?;
+        let serialized = serde_json::to_string(cached).map_err(std::io::Error::other)?;
 
         let pid = std::process::id();
         let nanos = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .map(|d| d.as_nanos())
             .unwrap_or(0);
-        let filename = path
-            .file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("cache");
+        let filename = path.file_name().and_then(|n| n.to_str()).unwrap_or("cache");
         let tmp_path = path.with_file_name(format!("{filename}.{pid}.{nanos}.tmp"));
 
         fs::write(&tmp_path, serialized)?;
@@ -163,7 +159,10 @@ mod tests {
         // When current config is Tokyo (matching)
         let filtered_tokyo = Some(tokyo_cache.clone())
             .filter(|c| c.is_location_match(35.6895, 139.6917) && c.is_current_valid());
-        assert!(filtered_tokyo.is_some(), "Must accept matching and fresh Tokyo cache");
+        assert!(
+            filtered_tokyo.is_some(),
+            "Must accept matching and fresh Tokyo cache"
+        );
 
         // When cache is expired (>30m old)
         let expired_cache = CachedWeather {
@@ -174,12 +173,16 @@ mod tests {
         };
         let filtered_expired = Some(expired_cache)
             .filter(|c| c.is_location_match(35.6895, 139.6917) && c.is_current_valid());
-        assert!(filtered_expired.is_none(), "Must reject expired cache on startup");
+        assert!(
+            filtered_expired.is_none(),
+            "Must reject expired cache on startup"
+        );
     }
 
     #[test]
     fn test_concurrent_cache_writes() {
-        let temp_dir = std::env::temp_dir().join(format!("toodle_test_conc_{}", std::process::id()));
+        let temp_dir =
+            std::env::temp_dir().join(format!("toodle_test_conc_{}", std::process::id()));
         let temp_cache = temp_dir.join("weather_cache.json");
         let _ = std::fs::remove_file(&temp_cache);
 
@@ -210,7 +213,10 @@ mod tests {
 
         // Cache file should exist and be valid JSON
         let loaded = WeatherCache::load_from(&temp_cache);
-        assert!(loaded.is_some(), "Cache must be loadable and non-corrupted after concurrent writes");
+        assert!(
+            loaded.is_some(),
+            "Cache must be loadable and non-corrupted after concurrent writes"
+        );
 
         let _ = std::fs::remove_file(&temp_cache);
         let _ = std::fs::remove_dir(&temp_dir);

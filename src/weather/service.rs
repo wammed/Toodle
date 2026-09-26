@@ -81,8 +81,8 @@ impl WeatherService {
                     err
                 );
                 // 3. Fallback to last available cache if available for this location (Sec 13)
-                if let Some(stale) = WeatherCache::load_from(&cache_p)
-                    .filter(|s| s.is_location_match(lat, lon))
+                if let Some(stale) =
+                    WeatherCache::load_from(&cache_p).filter(|s| s.is_location_match(lat, lon))
                 {
                     info!(
                         "Using stale weather cache as offline fallback for ({}, {})",
@@ -336,7 +336,10 @@ mod tests {
 
         // Delayed Tokyo response arrives late for Generation 2
         let applied_tokyo = mgr.apply_update(gen_tokyo, Ok(tokyo_data));
-        assert!(!applied_tokyo, "Stale Generation 2 response must be rejected");
+        assert!(
+            !applied_tokyo,
+            "Stale Generation 2 response must be rejected"
+        );
 
         // Weather state must remain London!
         assert_eq!(

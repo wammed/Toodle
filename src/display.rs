@@ -508,7 +508,13 @@ mod tests {
 
         // Connect DP-1 (ID 1)
         mgr.handle_created(1, Some("DP-1".to_string()));
-        mgr.handle_info_update(&1, Some("DP-1".to_string()), Some((2560, 1440)), Some((0, 0)), Some(1.0));
+        mgr.handle_info_update(
+            &1,
+            Some("DP-1".to_string()),
+            Some((2560, 1440)),
+            Some((0, 0)),
+            Some(1.0),
+        );
 
         // Target is DP-1
         let (resolved, changed) = mgr.update_target(Some("DP-1"));
@@ -536,11 +542,23 @@ mod tests {
 
         // Monitor A: DP-1 = 1920x1080
         mgr.handle_created(1, Some("DP-1".to_string()));
-        mgr.handle_info_update(&1, Some("DP-1".to_string()), Some((1920, 1080)), Some((0, 0)), Some(1.0));
+        mgr.handle_info_update(
+            &1,
+            Some("DP-1".to_string()),
+            Some((1920, 1080)),
+            Some((0, 0)),
+            Some(1.0),
+        );
 
         // Monitor B: DP-2 = 3840x2160
         mgr.handle_created(2, Some("DP-2".to_string()));
-        mgr.handle_info_update(&2, Some("DP-2".to_string()), Some((3840, 2160)), Some((1920, 0)), Some(1.0));
+        mgr.handle_info_update(
+            &2,
+            Some("DP-2".to_string()),
+            Some((3840, 2160)),
+            Some((1920, 0)),
+            Some(1.0),
+        );
 
         // Target A gets exactly 1920x1080
         let res_a = mgr.resolve(Some("DP-1"));
@@ -561,7 +579,13 @@ mod tests {
 
         // User configured target "DP-2", but only DP-1 is connected initially
         mgr.handle_created(1, Some("DP-1".to_string()));
-        mgr.handle_info_update(&1, Some("DP-1".to_string()), Some((1920, 1080)), Some((0, 0)), Some(1.0));
+        mgr.handle_info_update(
+            &1,
+            Some("DP-1".to_string()),
+            Some((1920, 1080)),
+            Some((0, 0)),
+            Some(1.0),
+        );
 
         let (init_resolved, _) = mgr.update_target(Some("DP-2"));
         // Falls back to Active because DP-2 is not yet connected
@@ -574,7 +598,13 @@ mod tests {
 
         // Now DP-2 is hot-plugged!
         mgr.handle_created(2, Some("DP-2".to_string()));
-        mgr.handle_info_update(&2, Some("DP-2".to_string()), Some((2560, 1440)), Some((1920, 0)), Some(1.0));
+        mgr.handle_info_update(
+            &2,
+            Some("DP-2".to_string()),
+            Some((2560, 1440)),
+            Some((1920, 0)),
+            Some(1.0),
+        );
 
         // update_target must detect transition from Active -> Specific
         let (plugged_resolved, changed) = mgr.update_target(Some("DP-2"));
@@ -603,7 +633,13 @@ mod tests {
 
         // Now DP-2 is re-connected!
         mgr.handle_created(3, Some("DP-2".to_string()));
-        mgr.handle_info_update(&3, Some("DP-2".to_string()), Some((2560, 1440)), Some((1920, 0)), Some(1.0));
+        mgr.handle_info_update(
+            &3,
+            Some("DP-2".to_string()),
+            Some((2560, 1440)),
+            Some((1920, 0)),
+            Some(1.0),
+        );
 
         // update_target must detect re-connection!
         let (reconnected_resolved, changed) = mgr.update_target(Some("DP-2"));
@@ -624,11 +660,23 @@ mod tests {
 
         // DP-1 = 1920x1080 (output id: 1)
         mgr.handle_created(1, Some("DP-1".to_string()));
-        mgr.handle_info_update(&1, Some("DP-1".to_string()), Some((1920, 1080)), Some((0, 0)), Some(1.0));
+        mgr.handle_info_update(
+            &1,
+            Some("DP-1".to_string()),
+            Some((1920, 1080)),
+            Some((0, 0)),
+            Some(1.0),
+        );
 
         // DP-2 = 3840x2160 (output id: 2)
         mgr.handle_created(2, Some("DP-2".to_string()));
-        mgr.handle_info_update(&2, Some("DP-2".to_string()), Some((3840, 2160)), Some((1920, 0)), Some(1.0));
+        mgr.handle_info_update(
+            &2,
+            Some("DP-2".to_string()),
+            Some((3840, 2160)),
+            Some((1920, 0)),
+            Some(1.0),
+        );
 
         // When active output is set to DP-2 (id: 2)
         mgr.set_active_output(Some(2));
@@ -662,12 +710,24 @@ mod tests {
         // Created DP-1
         mgr.handle_created(1, Some("DP-1".to_string()));
         // InfoUpdate DP-1 = 1920x1080 at (1920, 0)
-        mgr.handle_info_update(&1, Some("DP-1".to_string()), Some((1920, 1080)), Some((1920, 0)), Some(1.0));
+        mgr.handle_info_update(
+            &1,
+            Some("DP-1".to_string()),
+            Some((1920, 1080)),
+            Some((1920, 0)),
+            Some(1.0),
+        );
 
         // Created DP-2
         mgr.handle_created(2, Some("DP-2".to_string()));
         // InfoUpdate DP-2 = 3840x2160 at (0, 0)
-        mgr.handle_info_update(&2, Some("DP-2".to_string()), Some((3840, 2160)), Some((0, 0)), Some(1.0));
+        mgr.handle_info_update(
+            &2,
+            Some("DP-2".to_string()),
+            Some((3840, 2160)),
+            Some((0, 0)),
+            Some(1.0),
+        );
 
         // Runtime detection path: cosmic-randr designates DP-2 as primary
         let active = mgr.determine_active_output(Some("DP-2"));
@@ -686,15 +746,31 @@ mod tests {
 
         // Created DP-1: 1920x1080 at (1920, 0)
         mgr.handle_created(1, Some("DP-1".to_string()));
-        mgr.handle_info_update(&1, Some("DP-1".to_string()), Some((1920, 1080)), Some((1920, 0)), Some(1.0));
+        mgr.handle_info_update(
+            &1,
+            Some("DP-1".to_string()),
+            Some((1920, 1080)),
+            Some((1920, 0)),
+            Some(1.0),
+        );
 
         // Created DP-2: 3840x2160 at (0, 0) (Wayland global compositor origin)
         mgr.handle_created(2, Some("DP-2".to_string()));
-        mgr.handle_info_update(&2, Some("DP-2".to_string()), Some((3840, 2160)), Some((0, 0)), Some(1.0));
+        mgr.handle_info_update(
+            &2,
+            Some("DP-2".to_string()),
+            Some((3840, 2160)),
+            Some((0, 0)),
+            Some(1.0),
+        );
 
         // Runtime detection path: no cosmic-randr primary name, falls back to Wayland origin (0, 0)
         let active = mgr.determine_active_output(None);
-        assert_eq!(active, Some(2), "Output located at global (0, 0) must be designated active");
+        assert_eq!(
+            active,
+            Some(2),
+            "Output located at global (0, 0) must be designated active"
+        );
         mgr.set_active_output(active);
 
         // resolve(None) -> 3840x2160

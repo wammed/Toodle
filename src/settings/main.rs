@@ -828,7 +828,7 @@ impl SettingsApp {
         let ack_desc = container(
             text(
                 "Built with libcosmic and the Rust open-source ecosystem.\n\
-                Special thanks to the upstream libraries and free public API services:"
+                Special thanks to the upstream libraries and free public API services:",
             )
             .size(13),
         )
@@ -852,7 +852,9 @@ impl SettingsApp {
                 }),
             button::standard("GitHub ↗")
                 .padding([4, 10])
-                .on_press(Message::OpenUrl("https://github.com/pop-os/libcosmic".into())),
+                .on_press(Message::OpenUrl(
+                    "https://github.com/pop-os/libcosmic".into()
+                )),
         ]
         .spacing(8)
         .align_y(Alignment::Center);
@@ -877,18 +879,19 @@ impl SettingsApp {
         .spacing(8)
         .align_y(Alignment::Center);
 
-        let ack_box = container(column![ack_header, ack_desc, libcosmic_ref, openmeteo_ref].spacing(8))
-            .padding([14, 18])
-            .width(Length::Fill)
-            .style(|_| container::Style {
-                background: Some(Color::from_rgb(0.14, 0.15, 0.20).into()),
-                border: Border {
-                    color: Color::from_rgb(0.23, 0.25, 0.34),
-                    width: 1.0,
-                    radius: 10.0.into(),
-                },
-                ..Default::default()
-            });
+        let ack_box =
+            container(column![ack_header, ack_desc, libcosmic_ref, openmeteo_ref].spacing(8))
+                .padding([14, 18])
+                .width(Length::Fill)
+                .style(|_| container::Style {
+                    background: Some(Color::from_rgb(0.14, 0.15, 0.20).into()),
+                    border: Border {
+                        color: Color::from_rgb(0.23, 0.25, 0.34),
+                        width: 1.0,
+                        radius: 10.0.into(),
+                    },
+                    ..Default::default()
+                });
 
         // 4. View Full License Texts Trigger
         let view_licenses_btn = button::suggested("View Full License Texts")
@@ -916,12 +919,9 @@ impl SettingsApp {
             .padding([8, 16])
             .on_press(Message::ToggleLicenseView(false));
 
-        let header = row![
-            back_btn,
-            text("Full License Texts").size(18),
-        ]
-        .spacing(16)
-        .align_y(Alignment::Center);
+        let header = row![back_btn, text("Full License Texts").size(18),]
+            .spacing(16)
+            .align_y(Alignment::Center);
 
         let license_text_widget = text(FULL_LICENSE_TEXT)
             .font(toodle::clock::fonts::FONT_MONO_REGULAR)

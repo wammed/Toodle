@@ -701,8 +701,7 @@ impl Config {
         if let Some(parent) = path.parent() {
             fs::create_dir_all(parent)?;
         }
-        let serialized = toml::to_string_pretty(self)
-            .map_err(std::io::Error::other)?;
+        let serialized = toml::to_string_pretty(self).map_err(std::io::Error::other)?;
 
         // Atomic write via temporary file
         let tmp_path = path.with_extension("tmp");
@@ -1112,7 +1111,8 @@ margin_y = 20
 width = 400
 height = 200
 "#;
-        let (cfg, migrated) = Config::load_from_str(legacy_toml).expect("Should parse legacy config");
+        let (cfg, migrated) =
+            Config::load_from_str(legacy_toml).expect("Should parse legacy config");
         assert!(migrated, "Legacy layout fields must trigger migration flag");
         assert_eq!(cfg.layout.grid_position, GridPosition::TopRight);
 
@@ -1122,8 +1122,12 @@ height = 200
 grid_position = "Center"
 size_stage = 3
 "#;
-        let (cfg2, migrated2) = Config::load_from_str(modern_toml).expect("Should parse modern config");
-        assert!(!migrated2, "Modern layout fields must NOT trigger migration flag");
+        let (cfg2, migrated2) =
+            Config::load_from_str(modern_toml).expect("Should parse modern config");
+        assert!(
+            !migrated2,
+            "Modern layout fields must NOT trigger migration flag"
+        );
         assert_eq!(cfg2.layout.grid_position, GridPosition::Center);
         assert_eq!(cfg2.layout.size_stage, 3);
     }

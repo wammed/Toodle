@@ -306,7 +306,10 @@ mod tests {
         let err = parse_open_meteo_json(json).unwrap_err();
         match err {
             WeatherError::Parse(msg) => {
-                assert!(msg.contains("temperature_2m"), "Error must mention temperature_2m: {msg}");
+                assert!(
+                    msg.contains("temperature_2m"),
+                    "Error must mention temperature_2m: {msg}"
+                );
             }
             _ => panic!("Expected WeatherError::Parse, got {:?}", err),
         }
@@ -323,7 +326,10 @@ mod tests {
         let err = parse_open_meteo_json(json).unwrap_err();
         match err {
             WeatherError::Parse(msg) => {
-                assert!(msg.contains("weather_code"), "Error must mention weather_code: {msg}");
+                assert!(
+                    msg.contains("weather_code"),
+                    "Error must mention weather_code: {msg}"
+                );
             }
             _ => panic!("Expected WeatherError::Parse, got {:?}", err),
         }
@@ -341,7 +347,10 @@ mod tests {
         let err = parse_open_meteo_json(json).unwrap_err();
         match err {
             WeatherError::Parse(msg) => {
-                assert!(msg.contains("Missing 'daily'"), "Expected missing daily error: {msg}");
+                assert!(
+                    msg.contains("Missing 'daily'"),
+                    "Expected missing daily error: {msg}"
+                );
             }
             _ => panic!("Expected WeatherError::Parse, got {:?}", err),
         }
@@ -360,7 +369,10 @@ mod tests {
         let err = parse_open_meteo_json(json).unwrap_err();
         match err {
             WeatherError::Parse(msg) => {
-                assert!(msg.contains("Missing 'daily.time'"), "Expected missing daily.time error: {msg}");
+                assert!(
+                    msg.contains("Missing 'daily.time'"),
+                    "Expected missing daily.time error: {msg}"
+                );
             }
             _ => panic!("Expected WeatherError::Parse, got {:?}", err),
         }
@@ -384,7 +396,10 @@ mod tests {
         let err = parse_open_meteo_json(json).unwrap_err();
         match err {
             WeatherError::Parse(msg) => {
-                assert!(msg.contains("Insufficient daily forecast entries"), "Expected insufficient days error: {msg}");
+                assert!(
+                    msg.contains("Insufficient daily forecast entries"),
+                    "Expected insufficient days error: {msg}"
+                );
             }
             _ => panic!("Expected WeatherError::Parse, got {:?}", err),
         }
@@ -411,7 +426,10 @@ mod tests {
         let err = parse_open_meteo_json(json).unwrap_err();
         match err {
             WeatherError::Parse(msg) => {
-                assert!(msg.contains("Mismatched daily forecast array lengths"), "Expected length mismatch error: {msg}");
+                assert!(
+                    msg.contains("Mismatched daily forecast array lengths"),
+                    "Expected length mismatch error: {msg}"
+                );
             }
             _ => panic!("Expected WeatherError::Parse, got {:?}", err),
         }

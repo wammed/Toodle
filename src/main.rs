@@ -83,7 +83,10 @@ impl From<EditMessage> for Message {
 
 impl ToodleApp {
     fn target_iced_output(&self) -> IcedOutput {
-        match self.output_manager.resolve(self.config.display.output.as_deref()) {
+        match self
+            .output_manager
+            .resolve(self.config.display.output.as_deref())
+        {
             ResolvedOutput::Specific { output, .. } => IcedOutput::Output(output),
             ResolvedOutput::Active { .. } => IcedOutput::Active,
         }
@@ -319,10 +322,8 @@ impl Application for ToodleApp {
                 self.active_popup = Some(ActivePopup::ContextMenu);
 
                 let (screen_w, screen_h) = self.target_screen_dimensions();
-                let (w_anchor, (w_top, w_right, w_bottom, w_left), _, _) = self
-                    .config
-                    .layout
-                    .calculate_geometry(screen_w, screen_h);
+                let (w_anchor, (w_top, w_right, w_bottom, w_left), _, _) =
+                    self.config.layout.calculate_geometry(screen_w, screen_h);
                 let popup_margin = IcedMargin {
                     top: w_top + 16,
                     right: w_right + 16,
@@ -422,10 +423,8 @@ impl Application for ToodleApp {
                 self.active_popup = Some(ActivePopup::Calendar(popup::CalendarState::new()));
 
                 let (screen_w, screen_h) = self.target_screen_dimensions();
-                let (w_anchor, (w_top, w_right, w_bottom, w_left), _, _) = self
-                    .config
-                    .layout
-                    .calculate_geometry(screen_w, screen_h);
+                let (w_anchor, (w_top, w_right, w_bottom, w_left), _, _) =
+                    self.config.layout.calculate_geometry(screen_w, screen_h);
                 let popup_margin = IcedMargin {
                     top: w_top + 16,
                     right: w_right + 16,
@@ -462,10 +461,8 @@ impl Application for ToodleApp {
                 self.active_popup = Some(ActivePopup::Forecast);
 
                 let (screen_w, screen_h) = self.target_screen_dimensions();
-                let (w_anchor, (w_top, w_right, w_bottom, w_left), _, _) = self
-                    .config
-                    .layout
-                    .calculate_geometry(screen_w, screen_h);
+                let (w_anchor, (w_top, w_right, w_bottom, w_left), _, _) =
+                    self.config.layout.calculate_geometry(screen_w, screen_h);
                 let popup_margin = IcedMargin {
                     top: w_top + 16,
                     right: w_right + 16,
@@ -562,10 +559,8 @@ impl Application for ToodleApp {
 
                 self.state = WidgetState::Normal;
                 let (screen_w, screen_h) = self.target_screen_dimensions();
-                let (anchor, (top, right, bottom, left), (w, h), _) = self
-                    .config
-                    .layout
-                    .calculate_geometry(screen_w, screen_h);
+                let (anchor, (top, right, bottom, left), (w, h), _) =
+                    self.config.layout.calculate_geometry(screen_w, screen_h);
 
                 tasks.push(layer_cmd::set_anchor(self.widget_surface_id, anchor));
                 tasks.push(layer_cmd::set_margin(
@@ -594,9 +589,8 @@ impl Application for ToodleApp {
                     match msg {
                         EditMessage::SetGridPosition(pos) => {
                             edit_state.update(EditMessage::SetGridPosition(pos));
-                            let (anchor, (top, right, bottom, left), _size, _scale) = edit_state
-                                .layout
-                                .calculate_geometry(screen_w, screen_h);
+                            let (anchor, (top, right, bottom, left), _size, _scale) =
+                                edit_state.layout.calculate_geometry(screen_w, screen_h);
                             Task::batch(vec![
                                 layer_cmd::set_anchor(self.widget_surface_id, anchor),
                                 layer_cmd::set_margin(
@@ -610,9 +604,8 @@ impl Application for ToodleApp {
                         }
                         EditMessage::SetSizeStage(stage) => {
                             edit_state.update(EditMessage::SetSizeStage(stage));
-                            let (anchor, (top, right, bottom, left), (w, h), _scale) = edit_state
-                                .layout
-                                .calculate_geometry(screen_w, screen_h);
+                            let (anchor, (top, right, bottom, left), (w, h), _scale) =
+                                edit_state.layout.calculate_geometry(screen_w, screen_h);
                             Task::batch(vec![
                                 layer_cmd::set_size(self.widget_surface_id, Some(w), Some(h)),
                                 layer_cmd::set_anchor(self.widget_surface_id, anchor),
@@ -654,7 +647,9 @@ impl Application for ToodleApp {
 
                 // Handle edit mode conflict: if user is currently editing layout, preserve their in-progress layout
                 if let WidgetState::Edit(ref edit_state) = self.state {
-                    info!("External config reloaded while in Edit Mode; preserving active in-progress edit layout");
+                    info!(
+                        "External config reloaded while in Edit Mode; preserving active in-progress edit layout"
+                    );
                     let active_edit_layout = edit_state.layout.clone();
                     self.config = new_config;
                     self.config.layout = active_edit_layout;
@@ -697,10 +692,8 @@ impl Application for ToodleApp {
 
                 if let WidgetState::Normal = self.state {
                     let (target_w, target_h) = self.target_screen_dimensions();
-                    let (anchor, (top, right, bottom, left), (w, h), _) = self
-                        .config
-                        .layout
-                        .calculate_geometry(target_w, target_h);
+                    let (anchor, (top, right, bottom, left), (w, h), _) =
+                        self.config.layout.calculate_geometry(target_w, target_h);
                     tasks.push(layer_cmd::set_anchor(self.widget_surface_id, anchor));
                     tasks.push(layer_cmd::set_margin(
                         self.widget_surface_id,
