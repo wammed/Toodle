@@ -6,7 +6,7 @@
 ![Banner](images/toodle-banner.svg)
 
 [![Built with libcosmic](https://img.shields.io/badge/libcosmic-Pop!_OS_COSMIC-24C8D8?style=for-the-badge&logo=linux&logoColor=white)](https://github.com/pop-os/libcosmic)
-[![Rust](https://img.shields.io/badge/Rust-1.80+-orange?style=for-the-badge&logo=rust&logoColor=white)](https://www.rust-lang.org/)
+[![Rust](https://img.shields.io/badge/Rust-1.85+-orange?style=for-the-badge&logo=rust&logoColor=white)](https://www.rust-lang.org/)
 [![Wayland](https://img.shields.io/badge/Protocol-wlr--layer--shell-5277C3?style=for-the-badge&logo=wayland&logoColor=white)](https://wayland.freedesktop.org/)
 [![Platform](https://img.shields.io/badge/Platform-Linux_(COSMIC_/_Wayland)-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://www.kernel.org/)
 [![Vibe Coding](https://img.shields.io/badge/Built_with-AI_Vibe_Coding-8A2BE2?style=for-the-badge&logo=sparkles&logoColor=white)](#-このプロジェクトについて-ai-vibe-coding)
@@ -29,7 +29,7 @@
 
 ### 1. 必要環境
 
-- [Rust (Cargo)](https://rustup.rs/) (1.80 以上)
+- [Rust (Cargo)](https://rustup.rs/) (1.85 以上、edition 2024 対応 / 最新 Stable 推奨 / 実機検証: 1.98.1)
 - Linux Wayland 環境 / Pop!_OS COSMIC Desktop (`cosmic-comp`)
 - システムビルド依存パッケージ (Debian / Pop!_OS / Ubuntu):
   ```bash
