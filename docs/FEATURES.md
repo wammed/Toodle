@@ -1,5 +1,11 @@
 # Toodle Feature Specification
 
+<p align="center">
+  <strong>English</strong> | <a href="FEATURES.ja.md">日本語</a> | <a href="PORTAL.md">📚 Documentation Portal</a> | <a href="../README.md">← Root README</a>
+</p>
+
+---
+
 This document details the functional capabilities and features of **Toodle**, the COSMIC Desktop Clock Widget.
 
 > **Specification Baseline**: Conforms to [`docs/Drafts/Toodle-Design-Docs-v0.3.md`](file:///home/susie/GitHUB/wammed/Toodle/docs/Drafts/Toodle-Design-Docs-v0.3.md) (v0.3 Phase 0 Real-World Verification Baseline).
@@ -125,3 +131,9 @@ A native XDG Toplevel application (`720 x 780`, solid dark background) providing
 
 - **`cargo build --release`**: Only builds the Rust binaries without touching the user's home directory or system paths.
 - **`./tools/install-local.sh`**: Explicitly executed by developers to build and install the release binaries into `$HOME/.local/bin`.
+
+---
+
+<p align="center">
+  <a href="PORTAL.md">📚 Documentation Portal</a> | <a href="../README.md">← Root README</a> | <a href="FEATURES.ja.md">日本語仕様書はこちら →</a>
+</p>

@@ -1,5 +1,11 @@
 # Toodle Architecture & Technical Design Document
 
+<p align="center">
+  <strong>English</strong> | <a href="ARCHITECTURE.ja.md">日本語</a> | <a href="PORTAL.md">📚 Documentation Portal</a> | <a href="../README.md">← Root README</a>
+</p>
+
+---
+
 This document provides a comprehensive technical overview of the **Toodle** COSMIC Desktop Clock Widget system, detailing its surface management, Wayland layer-shell protocol usage, asynchronous tick streams, weather caching, inotify configuration synchronization, and embedded font infrastructure.
 
 > **Baseline Design Reference**: This architecture aligns with [`docs/Drafts/Toodle-Design-Docs-v0.3.md`](file:///home/susie/GitHUB/wammed/Toodle/docs/Drafts/Toodle-Design-Docs-v0.3.md) (v0.3 Phase 0 Real-World Verification Baseline). Real-world verification on COSMIC compositor (`cosmic-comp`) takes precedence over earlier draft assumptions.
@@ -268,4 +274,10 @@ Toodle enforces a clear separation between compilation and local system modifica
   - Explicitly executed by the developer to build and copy release binaries into `$HOME/.local/bin`.
 - **Future Packaging**:
   - Provides a clean architecture ready for distribution packaging (`.deb`, RPM, Arch PKGBUILD) as decoupled pipelines.
+
+---
+
+<p align="center">
+  <a href="PORTAL.md">📚 Documentation Portal</a> | <a href="../README.md">← Root README</a> | <a href="ARCHITECTURE.ja.md">日本語設計書はこちら →</a>
+</p>
 

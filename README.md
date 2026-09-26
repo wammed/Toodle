@@ -1,206 +1,183 @@
-# Toodle
+<div align="center">
 
-> **Modern Digital Clock Widget for the System76 COSMIC Desktop Environment**
+# ⏱️ Toodle
+### Modern Digital Clock & Weather Widget for System76 COSMIC Desktop Environment
 
 ![Banner](images/toodle-banner.svg)
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Rust](https://img.shields.io/badge/Rust-2021%20Edition-orange.svg)](https://www.rust-lang.org/)
-[![COSMIC](https://img.shields.io/badge/Desktop-COSMIC-purple.svg)](https://github.com/pop-os/cosmic-epoch)
-[![Wayland](https://img.shields.io/badge/Protocol-wlr--layer--shell-green.svg)](https://wayland.freedesktop.org/)
+[![Built with libcosmic](https://img.shields.io/badge/libcosmic-Pop!_OS_COSMIC-24C8D8?style=for-the-badge&logo=linux&logoColor=white)](https://github.com/pop-os/libcosmic)
+[![Rust](https://img.shields.io/badge/Rust-1.80+-orange?style=for-the-badge&logo=rust&logoColor=white)](https://www.rust-lang.org/)
+[![Wayland](https://img.shields.io/badge/Protocol-wlr--layer--shell-5277C3?style=for-the-badge&logo=wayland&logoColor=white)](https://wayland.freedesktop.org/)
+[![Platform](https://img.shields.io/badge/Platform-Linux_(COSMIC_/_Wayland)-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://www.kernel.org/)
+[![Vibe Coding](https://img.shields.io/badge/Built_with-AI_Vibe_Coding-8A2BE2?style=for-the-badge&logo=sparkles&logoColor=white)](#-about-this-project-ai-vibe-coding)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
 
-[日本語ドキュメント (Japanese)](README.ja.md) | [Licenses](LICENSES.md) | [Architecture](docs/ARCHITECTURE.md) | [Features](docs/FEATURES.md) | [Design Doc v0.3](docs/Drafts/Toodle-Design-Docs-v0.3.md) | [Handover Guide](SESSION_HANDOVER.md)
+<p align="center">
+  <strong>Native COSMIC / Wayland × Subsecond Precision Clock × 2-Tier Weather Cache × 9-Zone & 10-Stage Smooth Layout</strong><br>
+  A lightweight, feature-rich desktop clock widget residing directly above wallpapers with zero-flicker live in-place deformation for Pop!_OS COSMIC Desktop and Linux Wayland compositors.
+</p>
 
----
+<p align="center">
+  <a href="README.md">English</a> | <a href="README.ja.md">日本語</a> | <a href="docs/PORTAL.md">📚 Documentation Portal</a> | <a href="LICENSES/README.md">📄 Licensing Notice</a>
+</p>
 
-## Highlights
-
-- **Wayland Native**: Built specifically for COSMIC Desktop with `libcosmic` on `wlr-layer-shell`.
-- **Dynamic Multi-Monitor Management (`OutputManager`)**: Discovers connected Wayland outputs using compositor metadata, seamlessly binding to a configured display (e.g. `"DP-1"`) or safely falling back to the active/primary output. Isolates screen dimensions per display, defers surface recreation until geometry confirmation, and handles hot-plug reconnection dynamically.
-- **Accurate Sub-Second Clock**: High-precision async tick stream synchronized to the exact microsecond boundary of each upcoming second.
-- **Robust 2-Tier Cached Weather**: Live weather and 7-day forecast powered by Open-Meteo REST API, with 30-minute / 3-hour local persistent caching, request generation tracking to eliminate stale async responses, startup cache location & validity verification, strict JSON response validation, coordinate bounds checking, clock-skew protection, concurrent write safety, and offline fallback.
-- **Independent Popup Surfaces (`Layer::Top`)**:
-  - Right-click Context Menu (340 x 380) with centered 18px actions.
-  - Full Monthly Calendar (680 x 720) with smooth month navigation and today highlight.
-  - 7-Day Weekly Forecast (680 x 720) with condition icons, high/low temperatures, and precipitation probabilities.
-  - Solid dark styling for consistent visibility across any desktop wallpaper.
-- **9-Zone Display Grid & 10 Discrete Size Stages (WQHD-Ready)**: Intuitive 3×3 screen placement (`TopLeft` through `BottomRight`) paired with 10 size stages (280px to 2060px) tuned for screens up to WQHD (2560×1440). Font sizes (time, date) and vector weather icons synchronize 1:1 with window dimensions, with ample vertical headroom preventing any bottom clipping of text or weather icons.
-- **Two-Surface Edit Layout Mode**: An independent `Layer::Top` Edit Layout Panel (featuring 9-zone position buttons and 10 size selector buttons) works alongside the running `Layer::Bottom` widget, allowing instant in-place layout tuning without surface recreation or redraw flicker.
-- **Dedicated Settings App (`toodle-settings`)**: Native XDG Toplevel application (720 x 780, solid dark background) with 4 tabs (Appearance, Layout, Weather, Display), real-time atomic auto-save with error notifications, 10 theme presets, 16 curated colors, 9-zone layout and 10-stage size selectors, and quick city presets.
-- **Decoupled Build & Local Install Structure**: `cargo build --release` strictly compiles the Rust binaries without touching the user's home directory. Local installation to `$HOME/.local/bin` is handled via explicit execution of `./tools/install-local.sh`, establishing a clean architecture for future distribution packaging (.deb, RPM, AUR).
-- **Live Inotify Hot-Reloading & Migration**: Automatically updates running widgets in real-time when `~/.config/toodle/config.toml` changes (50ms event coalescing response). Older configuration files are automatically migrated and rewritten to disk in modern clean format. Active in-progress edits are protected from unexpected config reloads.
-- **100% Embedded Fonts & Color Vector Weather Icons**: Includes Roboto, JetBrains Mono, DejaVu Serif, and Open Sans statically embedded into the binary via `include_bytes!`. Weather condition icons are rendered using embedded Bas Milius Meteocons color SVG assets (`resources/icons/meteocons/`, MIT License) rather than monochrome font glyphs or Unicode emojis, ensuring vibrant, crisp, modern visual representation across all display scales without external dependencies.
+</div>
 
 ---
 
-## Quick Start
+## 🚀 Quick Start
 
-### Prerequisites
-- Arch Linux (or any modern Linux distribution with Rust & Cargo installed).
-- COSMIC Desktop Environment (`cosmic-comp`, `libcosmic` dependencies: `wayland`, `libxkbcommon`).
+### 1. Prerequisites
 
-### Building
+- [Rust (Cargo)](https://rustup.rs/) (1.80 or newer)
+- Linux Wayland compositor / Pop!_OS COSMIC Desktop (`cosmic-comp`)
+- System build dependencies (Debian / Pop!_OS / Ubuntu):
+  ```bash
+  sudo apt install build-essential libxkbcommon-dev wayland-protocols
+  ```
+  *(Arch Linux: `sudo pacman -S base-devel libxkbcommon wayland`)*
 
-Toodle is distributed as source code; pre-compiled binaries are not distributed via GitHub releases. You can build the binaries locally from source:
+### 2. Build
+
+Toodle is distributed in source code form. Build locally using standard Cargo:
 
 ```bash
 # Clone repository
 git clone https://github.com/wammed/Toodle.git
 cd Toodle
 
-# Build both toodle widget and toodle-settings (builds only, does not install)
+# Build widget daemon and companion settings application
 cargo build --release
 ```
 
-### Local Installation
+### 3. Local Installation (Optional)
 
-To install the release binaries (`toodle` and `toodle-settings`) to `$HOME/.local/bin`:
+To copy the release binaries (`toodle`, `toodle-settings`) to `$HOME/.local/bin`:
 
 ```bash
 ./tools/install-local.sh
 ```
 
-### Running
+### 4. Running
 
 ```bash
-# Launch the desktop clock widget (runs on desktop background Layer::Bottom)
+# Start the clock widget (runs on Layer::Bottom above desktop wallpaper)
 ./target/release/toodle &
-# or from $HOME/.local/bin if installed:
+# Or if installed locally:
 # toodle &
 
-# Launch the settings application
+# Launch companion configuration application
 ./target/release/toodle-settings
-# or from $HOME/.local/bin if installed:
+# Or if installed locally:
 # toodle-settings
 ```
 
-#### Autostart & Troubleshooting (COSMIC Desktop)
-
-When registering Toodle to launch automatically at login (e.g. via COSMIC Settings > Autostart or `$HOME/.config/autostart/*.desktop`):
-
-Depending on the initialization timing between the COSMIC login session and Toodle's Layer Surface / Input Region, right-clicks may not respond immediately after autostart. While the exact root cause remains unconfirmed, potential timing competition with desktop background initialization has been hypothesized.
-
-The verified workaround on tested hardware is to configure a ~3-second delay in the XDG Autostart command (introducing a 3-second delay has been confirmed to resolve the issue on tested machines; session startup ordering via a systemd user service is a future alternative / improvement candidate):
+#### 💡 Recommended Autostart Configuration
+When configuring Toodle in COSMIC session autostart (`~/.config/autostart/*.desktop`), add a 3-second startup delay to prevent race conditions during compositor login initialization (verified hardware workaround):
 
 ```desktop
-# Verified workaround on tested hardware (e.g. Exec line in ~/.config/autostart/com.github.wammed.toodle.desktop)
 Exec=sh -c "sleep 3 && toodle"
-# Or with explicit absolute path:
-# Exec=sh -c "sleep 3 && $HOME/.local/bin/toodle"
 ```
 
 ---
 
-## Architecture at a Glance
+## 💡 Key Features
 
-```text
-┌─────────────────────────────────────────────────────────────┐
-│                       COSMIC Desktop                        │
-│                                                             │
-│   Layer::Top Independent Surfaces:                          │
-│   ┌───────────────┐ ┌───────────────┐ ┌──────────────────┐  │
-│   │ Context Menu  │ │   Calendar    │ │ Weekly Forecast  │  │
-│   │   (340x380)   │ │   (680x720)   │ │    (680x720)     │  │
-│   └───────▲───────┘ └───────▲───────┘ └────────▲─────────┘  │
-│           │                 │                  │            │
-│           └─────────────────┼──────────────────┘            │
-│                             │ Edit Layout Panel (Layer::Top)│
-│                             ▼                               │
-│   Layer::Bottom Widget:                                     │
-│   ┌──────────────────────────────────────────────────────┐  │
-│   │ Toodle Main Widget                                   │  │
-│   │ [12:34:56]  [Monday, Sep 20, 2026]  [Sunny 22°C]     │  │
-│   │ (content_bounds input zone: transparent passthrough) │  │
-│   └─────────────────────────▲────────────────────────────┘  │
-│                             │ inotify watch (~25ms)         │
-│               ~/.config/toodle/config.toml                  │
-│                             ▲                               │
-│   XDG Toplevel Window:      │ atomic write (.tmp -> rename) │
-│   ┌─────────────────────────┴────────────────────────────┐  │
-│   │ toodle-settings (Appearance, Layout, Weather, Disp)  │  │
-│   └──────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────┘
-```
+- 🪟 **Native COSMIC / Wayland (`wlr-layer-shell`)**: Built with System76's official `libcosmic` toolkit. Operates on `Layer::Bottom` with minimal localized `content_bounds` input regions, allowing mouse clicks outside text bounds to pass straight through to desktop wallpapers.
+- ⏱️ **Subsecond Microsecond-Aligned Ticker**: Asynchronous clock stream synchronized to the upcoming microsecond second boundary, delivering pinpoint accuracy with zero CPU overhead.
+- 🌤️ **2-Tier Resilient Weather Subsystem**: Powered by Open-Meteo REST API with 30-min current and 3-hour weekly persistent local caches. Includes request generation IDs to discard stale responses, clock skew defense, and graceful offline fallback.
+- 🖥️ **Dynamic Multi-Monitor Management (`OutputManager`)**: Automatically tracks Wayland output metadata, seamlessly binding to designated displays (e.g. `"DP-1"`), with geometry settle delays and automatic fallback to primary displays.
+- 📐 **9-Zone Grid & 10 Size Stages**: 3×3 desktop positioning (TopLeft through BottomRight) and 10 size stages (280px to 2060px) optimized up to WQHD, dynamically scaling fonts, spacing, and vector weather icons.
+- ⚡ **Dual-Surface Edit Layout Mode**: Floating `Layer::Top` control panel coordinates with live `Layer::Bottom` widget. In-place layer commands enable zero-flicker real-time reshaping without surface recreation.
+- ⚙️ **Companion Settings App (`toodle-settings`)**: Dedicated 4-tab XDG Toplevel window (Appearance, Layout, Weather, Display) offering 10 theme presets, 16-color palette, quick city selector, and real-time auto-saving.
+- 🔄 **Fast inotify Hot-Reload & Migration**: Automatically detects changes to `~/.config/toodle/config.toml` within 50ms. Legacy configurations are automatically migrated to modern parameters on startup.
+- 🎨 **Embedded Fonts & Color Vector Weather Icons**: Statically bundles Roboto, Open Sans, JetBrains Mono NL, and DejaVu Serif. Renders crisp Bas Milius Meteocons color SVG icons at any scale without external system dependencies.
+
+> 📖 **Detailed Technical Specifications**:
+> For detailed specifications visit [docs/FEATURES.md](docs/FEATURES.md); for internal architecture and multi-surface designs see [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ---
 
-## Theme Presets & Fonts
+## 🖱️ Controls & Interaction
 
-| Theme | Font Family | Default Color | Style Description |
-|---|---|---|---|
-| **Modern** | Roboto Bold / Regular | `#FFFFFF` | Contemporary clean aesthetic |
-| **Classic** | DejaVu Serif Bold / Regular | `#E2E8F0` | Sophisticated timeless timepiece look |
-| **Digital Mono** | JetBrains Mono Bold / Regular | `#38BDF8` | Sleek developer monospace terminal style |
-| **Minimal** | Open Sans Bold / Regular | `#94A3B8` | Understated, clean humanist design |
-| **Cyberpunk** | JetBrains Mono Bold / Regular | `#EAB308` | Futuristic neon high-contrast look |
-| **Nord** | Open Sans Bold / Regular | `#38BDF8` | Cool arctic blue and slate tones |
-| **Warm Sunset** | DejaVu Serif Bold / Regular | `#F59E0B` | Warm literary amber and evening glow |
-| **Forest** | Roboto Bold / Regular | `#10B981` | Natural fresh emerald green theme |
-| **Slate** | JetBrains Mono Bold / Regular | `#94A3B8` | Industrial muted dark metallic slate |
-| **Rose Gold** | DejaVu Serif Bold / Regular | `#EC4899` | Elegant pastel rose and violet accents |
+Summary of primary controls:
 
----
+| Component | Input / Action | Resulting Action |
+| :--- | :--- | :--- |
+| **Main Widget** | **Right-Click** | Show **Context Menu** (`Calendar`, `Weekly Forecast`, `Edit Layout`, `Settings`, `Quit`) |
+| **Main Widget** | **Left-Click** (outside bounds) | **Click-Through** directly to desktop wallpaper (Minimal input region) |
+| **Popups** | **Click Outside** / **`Esc`** | Dismiss active popup (Menu, Calendar, Forecast) |
+| **Calendar** | **`<` and `>` buttons** | Navigate previous / next months (click `Today` to return) |
+| **Edit Layout Panel** | **9 Grid Zone Buttons** | Instantly reposition widget across desktop zones |
+| **Edit Layout Panel** | **Stage 1–10 Slider / Buttons** | Morph widget size and font scaling in place |
+| **Edit Layout Panel** | **Save** / **Cancel** | Atomically commit layout / Revert to original settings |
+| **Settings App** | **Adjust any setting** | Auto-saves immediately to `config.toml` with live widget hot-reload |
 
-## Configuration
-
-Settings are saved in `~/.config/toodle/config.toml`:
-
-```toml
-[display]
-output = "" # Target Wayland output (e.g. "DP-1", empty defaults to primary or first available output)
-
-[layout]
-grid_position = "TopRight" # 9 zones: TopLeft, TopCenter, TopRight, MiddleLeft, Center, MiddleRight, BottomLeft, BottomCenter, BottomRight
-size_stage = 2            # 10 stages: 1 (Compact 280x130) to 10 (Max WQHD 2060x920)
-
-[appearance]
-theme = "Modern"
-color = "#FFFFFF"
-text_shadow = true
-
-[weather]
-location_name = "Tokyo, Japan"
-latitude = 35.6895
-longitude = 139.6917
-temperature_unit = "Celsius" # Celsius, Fahrenheit
-```
-
-> **Automatic Config Migration**:
-> If an older `config.toml` containing legacy layout fields (`anchor`, `margin_x`, `margin_y`, `width`, `height`) or `font_scale` is loaded, Toodle automatically and deterministically migrates it to the closest `grid_position` and `size_stage`, preserving your preferred position and sizing before immediately rewriting the clean modern structure back to disk.
-
-> **Display & Multi-Monitor Status**:
-> Single-display geometry across standard resolutions (from 640×360 up to WQHD 2560×1440 and 4K 3840×2160) is verified through comprehensive automated geometry unit testing. On physical hardware, dual identical 2560×1440 displays (`DP-1` and `DP-2`) under Wayland have been tested and verified for output binding, DP-1/DP-2 target switching, correct display position, and correct display size. Multi-monitor setups involving differing resolutions (e.g. 1080p + 4K), mixed DPI, or fractional scaling have not yet been tested on physical hardware and remain future robustness targets.
+> 🖱️ **Full Interaction Guide**:
+> See **[docs/SHORTCUTS.md](docs/SHORTCUTS.md)** for exhaustive details on mouse interactions and surface navigation.
 
 ---
 
-## Key Interactions
+## 📚 Documentation Portal
 
-- **Left Click**: Focus or trigger interactive elements (e.g. month navigation in Calendar).
-- **Right Click**: Opens the Context Menu popup (`Calendar`, `Weekly Forecast`, `Edit Layout`, `Settings`, `Quit`).
-- **Edit Layout Mode**: Adjust position using the 3×3 zone grid and select one of 10 discrete size stages via the dedicated `Edit Layout Panel` with instantaneous in-place Wayland layer surface updates, then click `Save` or `Cancel`.
-- **Settings Application**: Changes to themes, 16-color swatches, and city presets are applied in real-time to the active widget.
+Comprehensive documentation is organized across specialized guides:
 
----
-
-## Development
-
-Toodle is developed using AI-assisted Vibe Coding. AI is actively used for architecture exploration, implementation, refactoring, testing, documentation, and code review, with the resulting code and behavior reviewed and validated throughout development.
-
----
-
-## Documentation & Design Baseline
-
-- **[Toodle Design Document v0.3](docs/Drafts/Toodle-Design-Docs-v0.3.md)**: Current official design baseline reflecting real-world COSMIC verification results.
-- **[Architecture Document](docs/ARCHITECTURE.md)**: Detailed surface hierarchy, tick stream, and cache specifications.
-- **[Feature Specification](docs/FEATURES.md)**: Detailed UI/UX feature guide.
-- **[Session Handover Guide](SESSION_HANDOVER.md)**: Full project history, technical decisions, known gaps, and roadmap.
+| Document | Primary Contents |
+| :--- | :--- |
+| **[📚 Documentation Portal](docs/PORTAL.md)** | Role-based navigation hub and task guide |
+| **[🖱️ Interaction & Controls Guide](docs/SHORTCUTS.md)** | Full mouse/keyboard controls, calendar, Edit Layout mode, settings application |
+| **[💡 Feature Specification (FEATURES)](docs/FEATURES.md)** | Stage dimension charts, 10 theme palettes, weather caching, SVG icons |
+| **[📐 Architecture Specification (ARCHITECTURE)](docs/ARCHITECTURE.md)** | Multi-surface hierarchy, dynamic monitor management, ticker clock stream |
+| **[🛡️ Reliability & Security Model (SECURITY)](docs/SECURITY.md)** | 2-tier cache integrity, stale protection, PID atomic writes, layer isolation |
+| **[📄 Licensing & Third-Party Notice](LICENSES/README.md)** | Core MIT License, Meteocons, embedded fonts, cargo-deny dependency compliance |
 
 ---
 
-## License
+## 🔒 Reliability & Security (Overview)
 
-This project is licensed under the [MIT License](LICENSE).
-The embedded Meteocons color SVG icons by Bas Milius are licensed under the [MIT License](THIRD_PARTY_LICENSES/METEOCONS_LICENSE.txt).
-All bundled fonts retain their respective upstream licenses (SIL Open Font License 1.1 / Bitstream Vera & DejaVu License).
-For comprehensive licensing details, source distribution policies, and third-party notices, see **[LICENSES.md](LICENSES.md)** and [THIRD_PARTY_LICENSES/README.md](THIRD_PARTY_LICENSES/README.md).
+- **Zero Telemetry & Full Offline Capability**: No user tracking, remote analytics, or background telemetry. Widget functions seamlessly during network outages via persistent local caches.
+- **Request Generation Counter (Stale Protection)**: Discards out-of-order delayed asynchronous weather updates, guaranteeing the UI never displays outdated conditions.
+- **Atomic Persistence with PID Temporary Files**: File writes to `config.toml` and cache utilize `.{file}.tmp.{pid}`, `sync_all`, and atomic filesystem renames to prevent partial write corruption.
+- **Minimized Input Regions**: Limits mouse capture strictly to visible content bounding boxes (`content_bounds`), preventing click-jacking and desktop shell interference.
 
+> 🛡️ **Detailed Security Specification**:
+> For complete security models, consult **[docs/SECURITY.md](docs/SECURITY.md)**.
+
+---
+
+## 🗺️ Roadmap
+
+- [x] ⏱️ **Subsecond Precision Clock**: Microsecond boundary-aligned non-blocking ticker stream.
+- [x] 🌤️ **2-Tier Resilient Weather Subsystem**: Open-Meteo REST API, request generation IDs, offline fallback.
+- [x] 📐 **9-Zone Grid & 10 Size Stages**: WQHD-optimized layout presets and in-place real-time reshaping.
+- [x] 🎛️ **Companion Settings App (`toodle-settings`)**: 4-tab configuration, real-time auto-save, 10 themes, 16-color palette.
+- [x] 📁 **Centralized Licensing (`LICENSES/`)**: Consolidated asset licenses and cargo-deny audit records.
+- [ ] 🖥️ **Mixed DPI / Fractional Scaling Verification**: Comprehensive hardware testing across heterogeneous multi-monitor setups.
+- [ ] 📅 **Calendar Event Integration**: Local iCalendar (.ics) or system calendar synchronization.
+- [ ] ⏰ **Alarms & Timers**: Lightweight desktop timers and reminders integrated with notifications.
+
+---
+
+## 🤖 About This Project (AI Vibe Coding)
+
+> [!IMPORTANT]
+> ### 💡 Built with AI Vibe Coding
+> **Toodle** was engineered through interactive pair-programming (**AI Vibe Coding**) with **Google DeepMind's Antigravity (Gemini)**.
+> Blending human architecture direction and rapid AI implementation, debugging, and verification, Toodle was built from scratch—spanning low-level Rust `libcosmic` Wayland layer shell protocols, multi-surface management, microsecond-aligned ticker streams, 2-tier weather caching, zero-flicker in-place layout transformation, and a native XDG Toplevel settings application.
+
+---
+
+## 📄 License
+
+Toodle's source code is released under the [MIT License](LICENSE).
+
+All authoritative third-party asset licenses and dependency compliance records are centralized in the **[`LICENSES/`](LICENSES/)** directory:
+
+- **Comprehensive Licensing Notice**: **[LICENSES/README.md](LICENSES/README.md)** ([Japanese: LICENSES/README.ja.md](LICENSES/README.ja.md))
+- **Embedded Meteocons Color SVG Icons**: [MIT License (Bas Milius)](LICENSES/METEOCONS_LICENSE.txt)
+- **Embedded Fonts**: [Roboto (SIL OFL 1.1)](LICENSES/ROBOTO_OFL.txt), [Open Sans (SIL OFL 1.1)](LICENSES/OPEN_SANS_OFL.txt), [JetBrains Mono NL (SIL OFL 1.1)](LICENSES/JETBRAINS_MONO_NL_OFL.txt), [DejaVu Serif (Bitstream Vera / DejaVu)](LICENSES/DEJAVU_LICENSE.txt)
+- **Third-Party Dependency Audit Records**: [LICENSES/THIRD_PARTY_AUDIT.md](LICENSES/THIRD_PARTY_AUDIT.md)
+
+<p align="center">
+  Crafted via <strong>AI Vibe Coding</strong> 🚀 · Built with ❤️ for Pop!_OS COSMIC & Linux Developers
+</p>

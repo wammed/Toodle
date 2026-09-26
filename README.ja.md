@@ -1,204 +1,183 @@
-# Toodle
+<div align="center">
 
-> **System76 COSMIC Desktop Environment 向け モダン・デジタルクロックウィジェット**
+# ⏱️ Toodle
+### System76 COSMIC Desktop Environment 向け モダン・デジタルクロック＆ウェザーウィジェット
 
 ![Banner](images/toodle-banner.svg)
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-[![Rust](https://img.shields.io/badge/Rust-2021%20Edition-orange.svg)](https://www.rust-lang.org/)
-[![COSMIC](https://img.shields.io/badge/Desktop-COSMIC-purple.svg)](https://github.com/pop-os/cosmic-epoch)
-[![Wayland](https://img.shields.io/badge/Protocol-wlr--layer--shell-green.svg)](https://wayland.freedesktop.org/)
+[![Built with libcosmic](https://img.shields.io/badge/libcosmic-Pop!_OS_COSMIC-24C8D8?style=for-the-badge&logo=linux&logoColor=white)](https://github.com/pop-os/libcosmic)
+[![Rust](https://img.shields.io/badge/Rust-1.80+-orange?style=for-the-badge&logo=rust&logoColor=white)](https://www.rust-lang.org/)
+[![Wayland](https://img.shields.io/badge/Protocol-wlr--layer--shell-5277C3?style=for-the-badge&logo=wayland&logoColor=white)](https://wayland.freedesktop.org/)
+[![Platform](https://img.shields.io/badge/Platform-Linux_(COSMIC_/_Wayland)-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://www.kernel.org/)
+[![Vibe Coding](https://img.shields.io/badge/Built_with-AI_Vibe_Coding-8A2BE2?style=for-the-badge&logo=sparkles&logoColor=white)](#-このプロジェクトについて-ai-vibe-coding)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green?style=for-the-badge)](LICENSE)
 
-[English (英語ドキュメント)](README.md) | [ライセンス通知](LICENSES.ja.md) | [アーキテクチャ設計書](docs/ARCHITECTURE.ja.md) | [機能仕様書](docs/FEATURES.ja.md) | [設計書 v0.3 (Baseline)](docs/Drafts/Toodle-Design-Docs-v0.3.md) | [引き継ぎサマリー](SESSION_HANDOVER.md)
+<p align="center">
+  <strong>COSMIC / Wayland ネイティブ × 高精度サブセカンドクロック × 2段階天気キャッシュ × 9ゾーン＆10段階サイズ自由変形</strong><br>
+  デスクトップ壁紙の直上に常駐し、ゼロフリッカーで美しく変形する Pop!_OS COSMIC Desktop および Linux Wayland 向けの軽量高機能クロックウィジェット
+</p>
 
----
+<p align="center">
+  <a href="README.md">English</a> | <a href="README.ja.md">日本語</a> | <a href="docs/PORTAL.ja.md">📚 ドキュメントポータル</a> | <a href="LICENSES/README.ja.md">📄 ライセンス通知</a>
+</p>
 
-## 主な特徴 (Highlights)
-
-- **COSMIC / Wayland ネイティブ**: System76 の公式ツールキット `libcosmic` および `wlr-layer-shell` プロトコルを採用。
-- **動的マルチモニター管理 (`OutputManager`)**: Wayland コンポジタのメタデータから出力先を自動管理し、指定されたディスプレイ（例: `"DP-1"`）へシームレスにバインド。切断時や未設定時はアクティブ/プライマリ画面へ安全にフォールバックし、画面ごとの個別解像度管理、ジオメトリ確定までの再生成遅延、およびホットプラグ再接続に対応。
-- **高精度サブセカンドクロック**: 次の 1 秒のマイクロ秒境界に同調する非同期ストリームにより、CPU 負荷なしに正確な 1 秒更新を実現。
-- **堅牢な2段階キャッシュ付き天気サブシステム**: Open-Meteo REST API を利用し、30分（現在天気）/ 3時間（週間予報）のローカル永続キャッシュ、リクエスト世代IDによる古い非同期レスポンスの破棄、起動時キャッシュの座標＆有効期限検証、厳格な JSON レスポンス検証（最低7日分の配列充足確認）、座標範囲検証、クロックスキュー保護、プロセスID一時ファイルによる並行書き込み安全性、オフライン自動フォールバックを完備。
-- **独立ポップアップサーフェス群 (`Layer::Top`)**:
-  - 右クリックコンテキストメニュー（340 x 380、18px 中央配置ボタン）。
-  - 月間カレンダー（680 x 720、滑らかな月送り、「今日」ハイライト）。
-  - 7日間週間天気予報（680 x 720、天候アイコン、気温幅、降水確率）。
-  - デスクトップ壁紙に左右されないソリッドダーク背景スタイリング。
-- **9分割グリッド配置 & 10段階固定サイズ（WQHD対応）**: ディスプレイを 3×3（TopLeft〜BottomRight）に分割する直感的な配置と、WQHD まで最適化された 10 段階のサイズプリセット（280px〜2060px）。フォントサイズ（時刻・日付）およびベクター天気アイコンがウィンドウ寸法に完全連動し、十分なヘッドルーム設計により文字や天候アイコンの下部見切れを完全防止。
-- **2 サーフェス Edit Layout モード**: `Layer::Top` の独立 `Edit Layout Panel`（9分割位置ボタン・10段階サイズ選択ボタン）と `Layer::Bottom` のウィジェット本体が連携。インプレース Layer Command により、チラつきゼロでリアルタイムに変形。
-- **独立設定アプリ (`toodle-settings`)**: ネイティブ XDG Toplevel ウィンドウ（720 x 780、ソリッドダーク背景）。4 タブ構成（Appearance, Layout, Weather, Display）、エラー通知付きリアルタイム自動保存、10 テーマプリセット、16 色カラーパレット、9分割配置・10段階サイズセレクタ、クイック都市選択。
-- **明確に分離されたビルド・インストール構造**: `cargo build --release` はバイナリ生成のみを担当し、ユーザー環境（`$HOME/.local/bin`）への反映は明示的な `./tools/install-local.sh` に分離。将来のディストリビューションパッケージング（.deb, RPM, AUR 等）とも整合。
-- **inotify 設定ホットリロード & マイグレーション**: `~/.config/toodle/config.toml` の変更を 50ms イベント集約（event coalescing）で高速検知し、ウィジェットへ即座に反映。旧形式の設定ファイルは読み込み時に自動マイグレーションされ、新形式でディスクに自動再保存。編集中（Edit モード）の作業内容は予期せぬ外部リロードから保護。
-- **完全組み込みフォント & カラーベクター天気アイコン**: Roboto, JetBrains Mono, DejaVu Serif, Open Sans を `include_bytes!` で静的組み込み。天気アイコンは従来のモノクロフォントや Unicode 絵文字に代わり、同梱 Bas Milius Meteocons カラー SVG アセット（`resources/icons/meteocons/`、MIT License）で描画され、外部システム非依存でどの環境・表示スケールでも鮮やかで美しいモダンなアイコンを表示。
+</div>
 
 ---
 
-## クイックスタート
+## 🚀 クイックスタート
 
-### 前提条件
-- Arch Linux（または Rust / Cargo が動作する最新の Linux ディストリビューション）。
-- COSMIC Desktop Environment（`cosmic-comp`, `libcosmic` 依存ライブラリ: `wayland`, `libxkbcommon`）。
+### 1. 必要環境
 
-### ビルド
+- [Rust (Cargo)](https://rustup.rs/) (1.80 以上)
+- Linux Wayland 環境 / Pop!_OS COSMIC Desktop (`cosmic-comp`)
+- システムビルド依存パッケージ (Debian / Pop!_OS / Ubuntu):
+  ```bash
+  sudo apt install build-essential libxkbcommon-dev wayland-protocols
+  ```
+  *(Arch Linux の場合: `sudo pacman -S base-devel libxkbcommon wayland`)*
 
-Toodle はソースコード形式で配布されます。GitHub Releases によるコンパイル済みバイナリの配布は行っていません。ソースからローカル環境でビルドしてください：
+### 2. ビルド
+
+Toodle はソースコード形式で配布されます。ローカル環境でビルドしてください：
 
 ```bash
 # リポジトリのクローン
 git clone https://github.com/wammed/Toodle.git
 cd Toodle
 
-# ウィジェット本体および設定アプリのビルド (ビルドのみ、$HOME/.local/bin へのインストールは行われません)
+# ウィジェット本体および設定アプリのビルド
 cargo build --release
 ```
 
-### ローカルインストール
+### 3. ローカルインストール (任意)
 
-リリースバイナリ（`toodle`, `toodle-settings`）を `$HOME/.local/bin` にインストールする場合：
+ビルドしたバイナリ（`toodle`, `toodle-settings`）を `$HOME/.local/bin` にインストールする場合：
 
 ```bash
 ./tools/install-local.sh
 ```
 
-### 起動
+### 4. 起動
 
 ```bash
 # クロックウィジェット本体の起動 (デスクトップ背景 Layer::Bottom で常駐)
 ./target/release/toodle &
-# またはインストール済みの場合:
+# またはローカルインストール済みの場合:
 # toodle &
 
 # 設定アプリケーションの起動
 ./target/release/toodle-settings
-# またはインストール済みの場合:
+# またはローカルインストール済みの場合:
 # toodle-settings
 ```
 
-#### 自動起動（Autostart）時の注意点・トラブルシューティング
-
-COSMIC デスクトップ環境の自動起動（設定アプリの「自動起動」や `$HOME/.config/autostart/*.desktop`）に登録する場合、COSMIC のログインセッション初期化と Toodle の Layer Surface / Input Region 初期化のタイミングによって、起動直後に**右クリックが反応しなくなる挙動**が発生する場合があります。現時点では正確な根本原因は未確定ですが、デスクトップ背景等の初期化順序との競合の可能性が考えられます。
-
-現在の実機環境で確認済みの回避策は、XDG Autostart の起動コマンドに 3 秒程度の遅延を設定する方法です（現在の実機環境では 3 秒程度の遅延によって問題が解消することを確認しています。systemd user service 等による起動順序制御は、将来的な改善・代替候補です）：
+#### 💡 自動起動（Autostart）時の推奨設定
+COSMIC デスクトップ環境の自動起動（設定アプリの「自動起動」や `~/.config/autostart/*.desktop`）に登録する場合、セッション初期化順序の競合を回避するため、起動コマンドに 3 秒程度の遅延を設定することを推奨します（実機検証済みワークアラウンド）：
 
 ```desktop
-# 実機確認済みワークアラウンド（例: ~/.config/autostart/com.github.wammed.toodle.desktop の Exec 行）
 Exec=sh -c "sleep 3 && toodle"
-# またはフルパス指定:
-# Exec=sh -c "sleep 3 && $HOME/.local/bin/toodle"
 ```
 
 ---
 
-## アーキテクチャ概要
+## 💡 主な特徴
 
-```text
-┌─────────────────────────────────────────────────────────────┐
-│                       COSMIC Desktop                        │
-│                                                             │
-│   Layer::Top 独立サーフェス群:                                │
-│   ┌───────────────┐ ┌───────────────┐ ┌──────────────────┐  │
-│   │ Context Menu  │ │   Calendar    │ │ Weekly Forecast  │  │
-│   │   (340x380)   │ │   (680x720)   │ │    (680x720)     │  │
-│   └───────▲───────┘ └───────▲───────┘ └────────▲─────────┘  │
-│           │                 │                  │            │
-│           └─────────────────┼──────────────────┘            │
-│                             │ Edit Layout Panel (Layer::Top)│
-│                             ▼                               │
-│   Layer::Bottom ウィジェット本体:                            │
-│   ┌──────────────────────────────────────────────────────┐  │
-│   │ Toodle Main Widget                                   │  │
-│   │ [12:34:56]  [Monday, Sep 20, 2026]  [Sunny 22°C]     │  │
-│   │ (content_bounds 矩形入力領域: 背景クリック透過)         │  │
-│   └─────────────────────────▲────────────────────────────┘  │
-│                             │ inotify 監視 (~25ms)          │
-│               ~/.config/toodle/config.toml                  │
-│                             ▲                               │
-│   XDG Toplevel ウィンドウ:   │ アトミック保存 (.tmp -> rename)│
-│   ┌─────────────────────────┴────────────────────────────┐  │
-│   │ toodle-settings (Appearance, Layout, Weather, Disp)  │  │
-│   └──────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────┘
-```
+- 🪟 **COSMIC / Wayland ネイティブ (`wlr-layer-shell`)**: System76 公式ツールキット `libcosmic` を採用。壁紙直上の `Layer::Bottom` 常駐と、`content_bounds` 局所化によるデスクトップ背面クリック透過を実現。
+- ⏱️ **マイクロ秒境界同期サブセカンドクロック**: 次の 1 秒境界に同調する非同期ストリームにより、CPU 負荷ゼロで正確無比な 1 秒更新を維持。
+- 🌤️ **2段階キャッシュ付き天気サブシステム**: Open-Meteo REST API を利用し、30分（現在）/ 3時間（週間）のローカル永続キャッシュ。リクエスト世代 ID による古いレスポンス破棄、クロックスキュー防御、完全オフラインフォールバックを完備。
+- 🖥️ **動的マルチモニター管理 (`OutputManager`)**: Wayland 出力先メタデータを自動追跡し、指定ディスプレイ（例: `"DP-1"`）へシームレスにバインド。未設定時・切断時のプライマリ自動フォールバックとジオメトリ確定遅延をサポート。
+- 📐 **9分割配置 & 10段階サイズプリセット**: ディスプレイを 3×3（TopLeft〜BottomRight）に配置。WQHD まで最適化された 10 段階のサイズ（280px〜2060px）と、フォント・SVG 天気アイコンの完全連動スケーリング。
+- ⚡ **2サーフェス Edit Layout モード**: 画面上部の独立操作盤パネルとウィジェット本体が連携。サーフェスの破棄・再生成を伴わないインプレース変形により、チラつき（Flicker）ゼロでリアルタイムに変形。
+- ⚙️ **独立設定アプリ (`toodle-settings`)**: 4 タブ構成（Appearance, Layout, Weather, Display）のネイティブ XDG Toplevel ウィンドウ。10 種のテーマ、16 色パレット、クイック都市選択、リアルタイム自動保存を搭載。
+- 🔄 **inotify 高速ホットリロード & 自動マイグレーション**: `~/.config/toodle/config.toml` の変更を 50ms 集約で即時反映。旧フォーマット設定ファイルは読み込み時に自動マイグレーション。
+- 🎨 **完全組み込みフォント & カラーベクター天気アイコン**: Roboto, Open Sans, JetBrains Mono NL, DejaVu Serif を静的組み込み。Bas Milius Meteocons カラー SVG アイコンにより、どの環境・スケールでも鮮やかで美しい天候を表示。
+
+> 📖 **詳細な仕様や設計解説**:
+> 各機能の完全な技術仕様は [docs/FEATURES.ja.md](docs/FEATURES.ja.md) を、マルチサーフェスや内部アーキテクチャの詳細は [docs/ARCHITECTURE.ja.md](docs/ARCHITECTURE.ja.md) をご覧ください。
 
 ---
 
-## テーマプリセット & 組み込みフォント
+## 🖱️ 基本操作 & インタラクション
 
-| テーマ名 | フォントファミリ | デフォルト推奨色 | スタイル解説 |
-|---|---|---|---|
-| **Modern** | Roboto Bold / Regular | `#FFFFFF` | クリーンで現代的なサンセリフスタイル |
-| **Classic** | DejaVu Serif Bold / Regular | `#E2E8F0` | 重厚で上品なタイムピースクラシックスタイル |
-| **Digital Mono** | JetBrains Mono Bold / Regular | `#38BDF8` | 開発者向けターミナルライクなモノスペース |
-| **Minimal** | Open Sans Bold / Regular | `#94A3B8` | 控えめで洗練されたヒューマニストデザイン |
-| **Cyberpunk** | JetBrains Mono Bold / Regular | `#EAB308` | ネオンイエローの高コントラストフューチャースタイル |
-| **Nord** | Open Sans Bold / Regular | `#38BDF8` | 北極の冷涼さを感じるアークティックブルースタイル |
-| **Warm Sunset** | DejaVu Serif Bold / Regular | `#F59E0B` | 夕暮れの温かみを感じるアンバーゴールド |
-| **Forest** | Roboto Bold / Regular | `#10B981` | 自然で爽やかなエメラルドグリーンスタイル |
-| **Slate** | JetBrains Mono Bold / Regular | `#94A3B8` | インダストリアルで落ち着いたダークメタリック |
-| **Rose Gold** | DejaVu Serif Bold / Regular | `#EC4899` | 上品なパステルローズとバイオレットのアクセント |
+最頻出の主要操作一覧です。
 
----
+| 操作対象 | 入力 / アクション | 動作内容 |
+| :--- | :--- | :--- |
+| **ウィジェット本体** | **右クリック** | **コンテキストメニュー** 表示 (`Calendar`, `Weekly Forecast`, `Edit Layout`, `Settings`, `Quit`) |
+| **ウィジェット本体** | **左クリック** (領域外) | **背後のデスクトップへクリック透過** (Input Region 最小化) |
+| **ポップアップ群** | **外側クリック** / **`Esc`** | 表示中のメニュー・カレンダー・天気予報を閉じる |
+| **カレンダー** | **「<」「>」ボタン** | 前月 / 翌月へスムーズに切り替え（「今日」で即時復帰） |
+| **Edit Layout Panel** | **9ゾーンボタン** | ウィジェットの位置を瞬時にデスクトップ上で移動 |
+| **Edit Layout Panel** | **1〜10 サイズスライダ** | ウィジェット寸法とフォントをインプレースでリアルタイム変形 |
+| **Edit Layout Panel** | **Save** / **Cancel** | 変更を設定ファイルにアトミック保存 / 変更前の状態に復元 |
+| **設定アプリ** | **設定項目を変更** | 変更が即座に `config.toml` に自動保存され、ウィジェットへ即時反映 |
 
-## 設定ファイル (`config.toml`)
-
-設定は `~/.config/toodle/config.toml` に保存されます：
-
-```toml
-[display]
-output = "" # 対象 Wayland 出力先（例: "DP-1"、空文字でプライマリ/有効な画面）
-
-[layout]
-grid_position = "TopRight" # 9ゾーン: TopLeft, TopCenter, TopRight, MiddleLeft, Center, MiddleRight, BottomLeft, BottomCenter, BottomRight
-size_stage = 2            # 10段階: 1 (Compact 280x130) 〜 10 (Max WQHD 2060x920)
-
-[appearance]
-theme = "Modern"
-color = "#FFFFFF"
-text_shadow = true
-
-[weather]
-location_name = "Tokyo, Japan"
-latitude = 35.6895
-longitude = 139.6917
-temperature_unit = "Celsius" # Celsius, Fahrenheit
-```
-
-> **設定の自動マイグレーション**:
-> 旧バージョンの設定ファイル（`anchor`, `margin_x`, `margin_y`, `width`, `height`, `font_scale` 等）が残っている場合でも、読み込み時に自動的かつ確定的に最も近い `grid_position` および `size_stage` へマイグレーションされ、クリーンな新仕様フォーマットでディスクに即時再保存されます。
-
-> **ディスプレイおよびマルチモニター環境の実機検証状況**:
-> 単一ディスプレイにおける各解像度（640×360 から WQHD 2560×1440、4K 3840×2160 まで）のジオメトリ計算は自動単体テストにより検証済みです。実機環境においては、Wayland 環境下の同一機種 2560×1440 × 2（`DP-1` および `DP-2`）において、出力先の切り替え、表示位置、表示サイズが正しく動作することを実機にて検証完了しています。異なる解像度の混在（例: 1080p + 4K）、マルチモニターでの mixed DPI、および分数スケーリング（fractional scaling）については実機検証未実施であり、将来の堅牢化課題として位置付けられます。
+> 🖱️ **完全版操作ガイド**:
+> 詳細な操作手順やサーフェス構造は **[docs/SHORTCUTS.ja.md](docs/SHORTCUTS.ja.md)** を参照してください。
 
 ---
 
-## 基本操作
+## 📚 ドキュメントポータル
 
-- **左クリック**: カレンダーの日付切り替えや各種ボタンの操作。
-- **右クリック**: コンテキストメニュー（`Calendar`, `Weekly Forecast`, `Edit Layout`, `Settings`, `Quit`）を表示。
-- **Edit Layout Mode**: 独立した `Edit Layout Panel` の 3×3 グリッドボタンと 10 段階のサイズボタンにより、Wayland サーフェスを破棄・再生成せずインプレースで瞬時にレイアウトを変更、`Save` または `Cancel`。
-- **設定アプリ (`toodle-settings`)**: テーマプリセット、16色パレット、都市プリセットの変更がデスクトップ上のウィジェットへ即座にリアルタイム反映。
+Toodle のより詳しいドキュメントは、以下の専門ドキュメントに体系化されています：
 
----
-
-## 開発について
-
-Toodle は、AIを活用した **Vibe Coding** によって開発されています。アーキテクチャの検討、実装、リファクタリング、テスト、ドキュメント作成、コードレビューなどの開発工程でAIを積極的に活用しています。生成されたコードや提案をそのまま採用するのではなく、実際の動作確認やレビューを行いながら開発しています。
-
----
-
-## ドキュメント & 設計 Baseline
-
-- **[Toodle Design Document v0.3](docs/Drafts/Toodle-Design-Docs-v0.3.md)**: COSMIC 実機検証結果を反映した公式の設計基準書（Baseline）。
-- **[アーキテクチャ設計書](docs/ARCHITECTURE.ja.md)**: サーフェス階層、クロックストリーム、キャッシュ仕様の詳細。
-- **[機能仕様書](docs/FEATURES.ja.md)**: UI/UX 機能の詳細解説。
-- **[開発引き継ぎサマリー](SESSION_HANDOVER.md)**: 全開発履歴、技術決定事項、既知のギャップ、ロードマップ。
+| ドキュメント | 内容 |
+| :--- | :--- |
+| **[📚 ドキュメントポータル](docs/PORTAL.ja.md)** | 目的別・読者別の総合案内ハブ |
+| **[🖱️ 操作 & インタラクションガイド](docs/SHORTCUTS.ja.md)** | 全マウス・キー操作、カレンダー、Edit Layout、設定アプリ操作の完全リファレンス |
+| **[💡 詳細機能仕様書 (FEATURES)](docs/FEATURES.ja.md)** | 10段階サイズ寸法表、全10種テーマ、天気キャッシュ仕様、カラーSVGアイコン詳細 |
+| **[📐 アーキテクチャ設計書 (ARCHITECTURE)](docs/ARCHITECTURE.ja.md)** | マルチサーフェス階層、動的マルチモニター管理、サブセカンドクロックストリーム |
+| **[🛡️ 堅牢性 & セキュリティモデル (SECURITY)](docs/SECURITY.ja.md)** | 2段階キャッシュ整合性、リクエスト世代管理、PIDアトミック保存、Input Region透過 |
+| **[📄 ライセンス & サードパーティ通知](LICENSES/README.ja.md)** | プロジェクトライセンス、Meteocons、フォント、全依存クレートのライセンス監査記録 |
 
 ---
 
-## ライセンス
+## 🔒 信頼性 & セキュリティ (概要)
 
-本プロジェクトは [MIT License](LICENSE) の下で公開されています。
-同梱の Meteocons カラー SVG アイコン（作者: Bas Milius）は [MIT License](THIRD_PARTY_LICENSES/METEOCONS_LICENSE.txt) の下でライセンスされています。
-同梱フォントは各フォント独自の上流ライセンス（SIL Open Font License 1.1 / Bitstream Vera & DejaVu License）が適用されます。
-ライセンス体系、ソースコード配布方針、第三者アセット通知の詳細は **[LICENSES.ja.md](LICENSES.ja.md)** および [THIRD_PARTY_LICENSES/README.md](THIRD_PARTY_LICENSES/README.md) を参照してください。
+- **ゼロトラッキング・完全オフライン耐性**: クラウド送信、アナリティクス、テレメトリは一切行いません。ネットワーク切断時でもローカルキャッシュによりシームレスに動作を継続します。
+- **リクエスト世代カウンター (Stale Protection)**: 非同期天気リクエストに世代 ID を付与し、ネットワーク遅延による古いレスポンスの上書きを 100% 遮断。
+- **PID 付与一時ファイルによるアトミック保存**: `config.toml` やキャッシュ保存時に `.{file}.tmp.{pid}` への書き込み・`sync_all`・アトミックな `rename` を行うことで、不完全な書き込みによるファイル破損を極小化。
+- **Input Region 最小化**: ウィジェットの表示矩形（`content_bounds`）のみを入力領域とし、デスクトップ背面への干渉やクリックジャックを根本から防止。
 
+> 🛡️ **セキュリティ詳細**:
+> より詳しい堅牢性・セキュリティ仕様については **[docs/SECURITY.ja.md](docs/SECURITY.ja.md)** をご覧ください。
+
+---
+
+## 🗺️ ロードマップ
+
+- [x] ⏱️ **高精度サブセカンドクロック**: 次の 1 秒マイクロ秒境界同期ストリームによる正確な計時。
+- [x] 🌤️ **2段階キャッシュ付き天気サブシステム**: Open-Meteo REST API、リクエスト世代管理、オフラインフォールバック。
+- [x] 📐 **9ゾーン配置 & 10段階サイズプリセット**: WQHD 最適化寸法とインプレースリアルタイム変形。
+- [x] 🎛️ **独立設定アプリ (`toodle-settings`)**: 4 タブ、リアルタイム自動保存、10 テーマ、16 色パレット。
+- [x] 📁 **ライセンス関係の集約 (`LICENSES/`)**: 全アセットライセンスおよび cargo-deny 監査記録の体系化。
+- [ ] 🖥️ **Mixed DPI / 分数スケーリング（Fractional Scaling）実機検証**: 異なる DPI 混在マルチモニター環境での検証・堅牢化。
+- [ ] 📅 **カレンダーイベント連動**: ローカル iCalendar (.ics) またはシステムカレンダーとのイベント同期表示。
+- [ ] ⏰ **アラーム & タイマー機能**: デスクトップ通知と連動したシンプルなタイマー・リマインダー。
+
+---
+
+## 🤖 このプロジェクトについて (AI Vibe Coding)
+
+> [!IMPORTANT]
+> ### 💡 AI Vibe Coding による開発
+> **Toodle** は、**Google DeepMind の Antigravity (Gemini)** との対話的ペアプログラミング（AI Vibe Coding）によって作成されたプロジェクトです。
+> 人間による設計方針・アイデアの提示と、AI による実装・デバッグ・最適化のフローを組み合わせ、低レイヤの Rust `libcosmic` Wayland Layer Shell プロトコル、マルチサーフェス構成、マイクロ秒境界同期クロック、2段階天気キャッシュ、インプレース変形 Edit Layout パネル、独立 XDG Toplevel 設定アプリに至るまでフルスクラッチで実装されました。
+
+---
+
+## 📄 ライセンス
+
+Toodle 本体のソースコードは [MIT License](LICENSE) のもとで公開されています。
+
+プロジェクトで利用・同梱しているすべてのライセンス文書およびサードパーティ監査記録は、ルート直下の **[`LICENSES/`](LICENSES/)** ディレクトリに集約されています：
+
+- **ライセンス総合案内**: **[LICENSES/README.ja.md](LICENSES/README.ja.md)**（[英語版: LICENSES/README.md](LICENSES/README.md)）
+- **同梱 Meteocons カラー SVG アイコン**: [MIT License (Bas Milius)](LICENSES/METEOCONS_LICENSE.txt)
+- **同梱フォント**: [Roboto (SIL OFL 1.1)](LICENSES/ROBOTO_OFL.txt), [Open Sans (SIL OFL 1.1)](LICENSES/OPEN_SANS_OFL.txt), [JetBrains Mono NL (SIL OFL 1.1)](LICENSES/JETBRAINS_MONO_NL_OFL.txt), [DejaVu Serif (Bitstream Vera / DejaVu)](LICENSES/DEJAVU_LICENSE.txt)
+- **サードパーティ依存クレート監査記録**: [LICENSES/THIRD_PARTY_AUDIT.md](LICENSES/THIRD_PARTY_AUDIT.md)
+
+<p align="center">
+  Crafted via <strong>AI Vibe Coding</strong> 🚀 · Built with ❤️ for Pop!_OS COSMIC & Linux Developers
+</p>

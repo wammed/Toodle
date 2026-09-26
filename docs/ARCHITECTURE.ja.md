@@ -1,5 +1,11 @@
 # Toodle アーキテクチャ & 技術設計書
 
+<p align="center">
+  <a href="ARCHITECTURE.md">English</a> | <strong>日本語</strong> | <a href="PORTAL.ja.md">📚 ドキュメントポータル</a> | <a href="../README.ja.md">← ルート README</a>
+</p>
+
+---
+
 本ドキュメントは、System76 COSMIC Desktop Environment 向けデジタルクロックウィジェット **Toodle** のシステムアーキテクチャ、Wayland layer-shell プロトコル制御、高精度クロックパイプライン、天気2段階キャッシュ、inotify 設定同期、および組み込みタイポグラフィ基盤に関する詳細な技術解説を提供します。
 
 > **設計書 Baseline**: 本アーキテクチャは [`docs/Drafts/Toodle-Design-Docs-v0.3.md`](file:///home/susie/GitHUB/wammed/Toodle/docs/Drafts/Toodle-Design-Docs-v0.3.md)（v0.3 Phase 0実機検証反映版 / Current Implementation Baseline）に完全準拠しています。COSMIC コンポジタ（`cosmic-comp`）の実機検証で成立した動作を初期ドラフトの想定よりも正として優先します。
@@ -255,4 +261,10 @@ Toodle では、ビルドコマンドとシステム変更の責務を厳格に�
   - 開発者がローカル環境への反映を意図して明示的に実行した場合のみ、release バイナリをビルドして `$HOME/.local/bin` にインストール。
 - **将来のパッケージング**:
   - `.deb`, RPM, Arch PKGBUILD などのディストリビューション向けパッケージ作成処理を、独立したパッケージングパイプラインとして追加できる拡張性を担保しています。
+
+---
+
+<p align="center">
+  <a href="PORTAL.ja.md">📚 ドキュメントポータル</a> | <a href="../README.ja.md">← ルート README</a> | <a href="ARCHITECTURE.md">English Architecture Spec →</a>
+</p>
 

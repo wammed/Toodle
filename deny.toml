@@ -5,7 +5,7 @@
 # - Upstream crates whose license is known but whose Cargo metadata is
 #   incomplete are NOT silently whitelisted here.
 # - Such metadata deficiencies are documented in
-#   THIRD_PARTY_LICENSES/README.md and should be re-checked when the
+#   LICENSES/THIRD_PARTY_AUDIT.md and should be re-checked when the
 #   corresponding dependency revision changes.
 #
 # cargo-deny: 0.20.2

@@ -1,5 +1,11 @@
 # Toodle 機能仕様書 (Feature Specification)
 
+<p align="center">
+  <a href="FEATURES.md">English</a> | <strong>日本語</strong> | <a href="PORTAL.ja.md">📚 ドキュメントポータル</a> | <a href="../README.ja.md">← ルート README</a>
+</p>
+
+---
+
 本ドキュメントは、COSMIC Desktop 向けデジタルクロックウィジェット **Toodle** の機能仕様および操作体系を詳述します。
 
 > **仕様 Baseline**: 本仕様は [`docs/Drafts/Toodle-Design-Docs-v0.3.md`](file:///home/susie/GitHUB/wammed/Toodle/docs/Drafts/Toodle-Design-Docs-v0.3.md)（v0.3 Phase 0実機検証反映版 / Current Implementation Baseline）に完全準拠しています。
@@ -125,4 +131,10 @@
 
 - **`cargo build --release`**: バイナリ（`toodle`, `toodle-settings`）のコンパイルのみを行い、ユーザーのホームディレクトリやシステム環境を一切変更しません。
 - **`./tools/install-local.sh`**: 開発者がローカル環境への反映を意図した場合に明示的に実行し、リリースバイナリを `$HOME/.local/bin` にインストールします。
+
+---
+
+<p align="center">
+  <a href="PORTAL.ja.md">📚 ドキュメントポータル</a> | <a href="../README.ja.md">← ルート README</a> | <a href="FEATURES.md">English Spec →</a>
+</p>
 

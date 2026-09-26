@@ -1,12 +1,12 @@
 # ライセンスおよびサードパーティ通知 (Licensing & Third-Party Notice)
 
 <p align="center">
-  <a href="LICENSES.md">English</a> | <strong>日本語</strong>
+  <a href="README.md">English</a> | <strong>日本語</strong> | <a href="../README.ja.md">← ルート README</a>
 </p>
 
 ---
 
-本書は、**Toodle** プロジェクトにおけるライセンスポリシー、ソースコード配布モデル、サードパーティ製依存関係の管理方針、および同梱フォント・アイコンアセットのライセンスについて包括的に説明するドキュメントです。
+本書は、**Toodle** プロジェクトにおけるライセンスポリシー、ソースコード配布モデル、サードパーティ製依存関係の管理方針、および同梱フォント・アイコンアセットのライセンスについて包括的に説明するドキュメントです。本ディレクトリ（`LICENSES/`）には、プロジェクトで利用・同梱している各コンポーネントのライセンス本文および監査記録が集約されています。
 
 ---
 
@@ -14,7 +14,7 @@
 
 **Toodle** 本体のソースコードは、**MIT License** のもとで公開されています。
 
-- ライセンス全文はリポジトリルートの [LICENSE](LICENSE) ファイルに記載されています。
+- ライセンス全文はリポジトリルートの [LICENSE](../LICENSE)（同一内容: [LICENSE-MIT.txt](LICENSE-MIT.txt)）に記載されています。
 - Copyright (c) 2026 wammed
 - 著作権表示および許諾表示を保持する限り、商用・非商用を問わず、複製、改変、再配布、サブライセンス付与、および派生著作物の作成を自由に行うことができます。
 
@@ -35,7 +35,7 @@ Toodle は、本リポジトリを通じて**ソースコード形式**で配布
     cargo build --release
     ```
     これにより、ユーザーのシステムやホームディレクトリを変更することなく、`target/release/` 配下に `toodle` および `toodle-settings` バイナリが生成されます。
-  - **ローカルインストール補助ツール**: ビルドされたバイナリを `$HOME/.local/bin` に配置したいユーザーのために、補助スクリプト [`tools/install-local.sh`](tools/install-local.sh) を提供しています。このスクリプトはユーザー自身のローカル環境でのインストールを補助するものであり、GitHub Releases 等のバイナリ配布機構ではありません。
+  - **ローカルインストール補助ツール**: ビルドされたバイナリを `$HOME/.local/bin` に配置したいユーザーのために、補助スクリプト [`tools/install-local.sh`](../tools/install-local.sh) を提供しています。このスクリプトはユーザー自身のローカル環境でのインストールを補助するものであり、GitHub Releases 等のバイナリ配布機構ではありません。
 - **公式レジストリからの直接取得**: ビルド時、すべての Rust 依存クレートは公式パッケージレジストリ（[crates.io](https://crates.io/)）または指定の公式 Git リポジトリ（`libcosmic` 等）から直接ダウンロードされます。本リポジトリ内に外部クレートのソースコードをベンダー同梱（Vendor）して再配布することはありません。
 
 ---
@@ -43,7 +43,7 @@ Toodle は、本リポジトリを通じて**ソースコード形式**で配布
 ## 3. サードパーティ製依存関係とライセンス適合性 (Third-Party Dependencies & Compliance)
 
 ### パーミッシブおよびウィークコピーレフト方針
-下流でのビルドや利用におけるライセンス上の制約（不要な感染性）を排除するため、Toodle の全依存クレートは [`deny.toml`](deny.toml) にて厳格に管理されています：
+下流でのビルドや利用におけるライセンス上の制約（不要な感染性）を排除するため、Toodle の全依存クレートは [`deny.toml`](../deny.toml) にて厳格に管理されています：
 
 - **許可されているライセンス**: パーミッシブ（寛容型）オープンソースライセンス、および動的リンク境界が明確なウィークコピーレフトライセンス（COSMIC デスクトップライブラリの MPL-2.0 など）のみを許可しています：
   - `0BSD`
@@ -65,7 +65,7 @@ Toodle では [`cargo-deny`](https://github.com/EmbarkStudios/cargo-deny) を用
   ```bash
   cargo deny check licenses
   ```
-- 上流パッケージのマニフェストメタデータに不備があるクレートについては、その調査結果と根拠を [`THIRD_PARTY_LICENSES/README.md`](THIRD_PARTY_LICENSES/README.md) に記録・管理しています。
+- 上流パッケージのマニフェストメタデータに不備があるクレートについては、その調査結果と根拠を [`THIRD_PARTY_AUDIT.md`](THIRD_PARTY_AUDIT.md) に記録・管理しています。
 
 ### システム共有ライブラリの動的リンク
 Toodle は COSMIC / Wayland ネイティブウィジェットとして動作し、ホスト OS のシステム共有ライブラリを利用します：
@@ -84,10 +84,10 @@ Toodle は COSMIC / Wayland ネイティブウィジェットとして動作し�
 
 | フォント名 | ファイル | 著作者 / 著作権表示 | 上流ライセンス | ライセンス文書 |
 | :--- | :--- | :--- | :--- | :--- |
-| **Roboto** | `Roboto-Regular.ttf`<br>`Roboto-Bold.ttf` | Christian Robertson, Google LLC | SIL Open Font License 1.1 | [ROBOTO_OFL.txt](THIRD_PARTY_LICENSES/ROBOTO_OFL.txt) |
-| **Open Sans** | `OpenSans-Regular.ttf`<br>`OpenSans-Bold.ttf` | Steve Matteson, Monotype Design Team | SIL Open Font License 1.1 | [OPEN_SANS_OFL.txt](THIRD_PARTY_LICENSES/OPEN_SANS_OFL.txt) |
-| **JetBrains Mono NL** | `JetBrainsMono-Regular.ttf`<br>`JetBrainsMono-Bold.ttf` | JetBrains s.r.o., Philipp Nurullin, Konstantin Bulenkov | SIL Open Font License 1.1 | [JETBRAINS_MONO_NL_OFL.txt](THIRD_PARTY_LICENSES/JETBRAINS_MONO_NL_OFL.txt) |
-| **DejaVu Serif** | `DejaVuSerif-Regular.ttf`<br>`DejaVuSerif-Bold.ttf` | DejaVu fonts team, Bitstream Inc., Tavmjong Bah | Bitstream Vera / DejaVu Fonts License | [DEJAVU_LICENSE.txt](THIRD_PARTY_LICENSES/DEJAVU_LICENSE.txt) |
+| **Roboto** | `Roboto-Regular.ttf`<br>`Roboto-Bold.ttf` | Christian Robertson, Google LLC | SIL Open Font License 1.1 | [ROBOTO_OFL.txt](ROBOTO_OFL.txt) |
+| **Open Sans** | `OpenSans-Regular.ttf`<br>`OpenSans-Bold.ttf` | Steve Matteson, Monotype Design Team | SIL Open Font License 1.1 | [OPEN_SANS_OFL.txt](OPEN_SANS_OFL.txt) |
+| **JetBrains Mono NL** | `JetBrainsMono-Regular.ttf`<br>`JetBrainsMono-Bold.ttf` | JetBrains s.r.o., Philipp Nurullin, Konstantin Bulenkov | SIL Open Font License 1.1 | [JETBRAINS_MONO_NL_OFL.txt](JETBRAINS_MONO_NL_OFL.txt) |
+| **DejaVu Serif** | `DejaVuSerif-Regular.ttf`<br>`DejaVuSerif-Bold.ttf` | DejaVu fonts team, Bitstream Inc., Tavmjong Bah | Bitstream Vera / DejaVu Fonts License | [DEJAVU_LICENSE.txt](DEJAVU_LICENSE.txt) |
 
 ### 天候アイコンおよびビジュアルアセット
 
@@ -95,7 +95,7 @@ Toodle は COSMIC / Wayland ネイティブウィジェットとして動作し�
   - 格納先: `resources/icons/meteocons/`
   - 作者: Bas Milius
   - ライセンス: **MIT License** (Copyright (c) 2020-present Bas Milius)
-  - ライセンス文書: [METEOCONS_LICENSE.txt](THIRD_PARTY_LICENSES/METEOCONS_LICENSE.txt)
+  - ライセンス文書: [METEOCONS_LICENSE.txt](METEOCONS_LICENSE.txt)
   - *備考*: Toodle 本体と Meteocons はともに MIT License ですが、異なる著作者による個別の著作物です。
 - **アプリアイコン & デスクトップエントリ**:
   - 格納先: `resources/icons/toodle*.png`, `resources/icons/*.svg`, `resources/*.desktop`
@@ -103,18 +103,21 @@ Toodle は COSMIC / Wayland ネイティブウィジェットとして動作し�
 
 ---
 
-## 5. サードパーティ製ライセンスファイル一覧
+## 5. ライセンス関連ファイル一覧 (`LICENSES/`)
 
-第三者コンポーネントの正式なライセンス本文は、[`THIRD_PARTY_LICENSES/`](THIRD_PARTY_LICENSES/) ディレクトリに保存されています：
+本ディレクトリに集約されているライセンス文書の一覧です：
 
 ```text
-THIRD_PARTY_LICENSES/
+LICENSES/
+├── README.ja.md                  # 本ドキュメント (日本語版総合案内)
+├── README.md                     # 英語版総合案内 (English Notice)
+├── LICENSE-MIT.txt               # Toodle 本体 MIT License 全文
 ├── DEJAVU_LICENSE.txt            # Bitstream Vera / DejaVu Fonts License 本文
 ├── JETBRAINS_MONO_NL_OFL.txt     # SIL Open Font License 1.1 本文
 ├── METEOCONS_LICENSE.txt         # MIT License (Bas Milius) 本文
 ├── OPEN_SANS_OFL.txt             # SIL Open Font License 1.1 本文
-├── README.md                     # 上流クレートのライセンス調査・監査記録
-└── ROBOTO_OFL.txt                # SIL Open Font License 1.1 本文
+├── ROBOTO_OFL.txt                # SIL Open Font License 1.1 本文
+└── THIRD_PARTY_AUDIT.md          # 上流クレートのライセンス調査・監査記録 (cargo-deny)
 ```
 
 ---
@@ -139,12 +142,18 @@ cargo bundle-licenses --format yaml --output THIRDPARTY.yaml
 
 | 構成要素 | ライセンス / 適用方針 | 補足 |
 | :--- | :--- | :--- |
-| **Toodle 本体のソースコード** | MIT License | [LICENSE](LICENSE) 参照 |
-| **Rust 依存クレート** | パーミッシブ / ウィークコピーレフト | [deny.toml](deny.toml) で強制検証 |
+| **Toodle 本体のソースコード** | MIT License | [LICENSE](../LICENSE) / [LICENSE-MIT.txt](LICENSE-MIT.txt) 参照 |
+| **Rust 依存クレート** | パーミッシブ / ウィークコピーレフト | [deny.toml](../deny.toml) で強制検証 |
 | **システム共有ライブラリ** | システム提供 (Wayland, libxkbcommon) | ユーザーのホスト OS より動的リンク |
-| **Meteocons** | MIT License (Bas Milius) | `resources/icons/meteocons/` |
-| **Roboto** | SIL Open Font License 1.1 | `resources/fonts/` |
-| **Open Sans** | SIL Open Font License 1.1 | `resources/fonts/` |
-| **JetBrains Mono NL** | SIL Open Font License 1.1 | `resources/fonts/` |
-| **DejaVu Serif** | Bitstream Vera / DejaVu License | `resources/fonts/` |
+| **Meteocons** | MIT License (Bas Milius) | [METEOCONS_LICENSE.txt](METEOCONS_LICENSE.txt) |
+| **Roboto** | SIL Open Font License 1.1 | [ROBOTO_OFL.txt](ROBOTO_OFL.txt) |
+| **Open Sans** | SIL Open Font License 1.1 | [OPEN_SANS_OFL.txt](OPEN_SANS_OFL.txt) |
+| **JetBrains Mono NL** | SIL Open Font License 1.1 | [JETBRAINS_MONO_NL_OFL.txt](JETBRAINS_MONO_NL_OFL.txt) |
+| **DejaVu Serif** | Bitstream Vera / DejaVu License | [DEJAVU_LICENSE.txt](DEJAVU_LICENSE.txt) |
 | **アプリアイコン & アセット** | MIT License | `resources/icons/`, `resources/*.desktop` |
+
+---
+
+<p align="center">
+  <a href="../README.ja.md">← ルート README (日本語) に戻る</a> | <a href="README.md">English Notice →</a>
+</p>
