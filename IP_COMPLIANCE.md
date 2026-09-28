@@ -1,5 +1,9 @@
 # Icon Design & IP Compliance Due Diligence Record
 
+<p align="center">
+  <strong>English</strong> | <a href="IP_COMPLIANCE.ja.md">日本語</a>
+</p>
+
 This document records the provenance, design-review history, and IP due-diligence process for the **Toodle** application icon.
 
 > **Scope:** This is a project provenance and due-diligence record. It is not a legal opinion, trademark clearance, or guarantee that no third-party rights are implicated.
