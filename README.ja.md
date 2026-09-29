@@ -129,6 +129,8 @@ Toodle のより詳しいドキュメントは、以下の専門ドキュメン�
 | **[💡 詳細機能仕様書 (FEATURES)](docs/FEATURES.ja.md)** | 10段階サイズ寸法表、全10種テーマ、天気キャッシュ仕様、カラーSVGアイコン詳細 |
 | **[📐 アーキテクチャ設計書 (ARCHITECTURE)](docs/ARCHITECTURE.ja.md)** | マルチサーフェス階層、動的マルチモニター管理、サブセカンドクロックストリーム |
 | **[🛡️ 堅牢性 & セキュリティモデル (SECURITY)](docs/SECURITY.ja.md)** | 2段階キャッシュ整合性、リクエスト世代管理、PIDアトミック保存、Input Region透過 |
+| **[🛡️ 知的財産コンプライアンス・デューデリジェンス (IP_COMPLIANCE)](IP_COMPLIANCE.ja.md)** | Toodle アイコンの由来、類似性レビュー結果、知財デューデリジェンス記録 |
+| **[🎨 アイコンデザイン・IPレビュー履歴 (ICON_DESIGN_HISTORY)](ICON_DESIGN_HISTORY.ja.md)** | 4アプリ横断の AI 生成ログ、類似性監査履歴、デザイン変遷の記録 |
 | **[📄 ライセンス & サードパーティ通知](LICENSES/README.ja.md)** | プロジェクトライセンス、Meteocons、フォント、全依存クレートのライセンス監査記録 |
 
 ---
@@ -171,9 +173,14 @@ Toodle のより詳しいドキュメントは、以下の専門ドキュメン�
 
 Toodle 本体のソースコードは [MIT License](LICENSE) のもとで公開されています。
 
+ライセンス方針、サードパーティ依存関係の適合性、およびアセットのプロヴェナンス（由来）記録の詳細は以下を参照してください：
+
+- **[ライセンス総合案内 (LICENSES/README.ja.md)](LICENSES/README.ja.md)**: ソースコード配布モデル、依存クレート管理方針（`cargo-deny`）、システム共有ライブラリの動的リンク、パッケージ化時の注意点。
+- **[アイコン知的財産コンプライアンス・デューデリジェンス記録 (IP_COMPLIANCE.ja.md)](IP_COMPLIANCE.ja.md)**: Toodle アイコンの由来、類似性レビュー結果、知財デューデリジェンス記録。
+- **[アイコンデザイン・IPレビュー履歴 (ICON_DESIGN_HISTORY.ja.md)](ICON_DESIGN_HISTORY.ja.md)**: 4 アプリケーション横断の AI アイコン生成および類似性監査の総合時系列アーカイブ。
+
 プロジェクトで利用・同梱しているすべてのライセンス文書およびサードパーティ監査記録は、ルート直下の **[`LICENSES/`](LICENSES/)** ディレクトリに集約されています：
 
-- **ライセンス総合案内**: **[LICENSES/README.ja.md](LICENSES/README.ja.md)**（[英語版: LICENSES/README.md](LICENSES/README.md)）
 - **同梱 Meteocons カラー SVG アイコン**: [MIT License (Bas Milius)](LICENSES/METEOCONS_LICENSE.txt)
 - **同梱フォント**: [Roboto (SIL OFL 1.1)](LICENSES/ROBOTO_OFL.txt), [Open Sans (SIL OFL 1.1)](LICENSES/OPEN_SANS_OFL.txt), [JetBrains Mono NL (SIL OFL 1.1)](LICENSES/JETBRAINS_MONO_NL_OFL.txt), [DejaVu Serif (Bitstream Vera / DejaVu)](LICENSES/DEJAVU_LICENSE.txt)
 - **サードパーティ依存クレート監査記録**: [LICENSES/THIRD_PARTY_AUDIT.md](LICENSES/THIRD_PARTY_AUDIT.md)

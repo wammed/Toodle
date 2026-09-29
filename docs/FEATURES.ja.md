@@ -134,6 +134,16 @@
 
 ---
 
+## 7. ライセンス & 意匠プロヴェナンス (Licensing & Visual Asset Provenance)
+
+- **組み込みフォント & 天気アセット**:
+  - バイナリに組み込まれた 4 系統のフォント（Roboto, Open Sans, JetBrains Mono NL, DejaVu Serif）および Bas Milius 氏による Meteocons SVG アイコンは、各オープンソースライセンスに準拠して利用されています。詳細は [`LICENSES/README.ja.md`](../LICENSES/README.ja.md) を参照してください。
+- **アプリアイコン & ビジュアルアイデンティティのクリアランス**:
+  - Toodle のアプリアイコン（頭文字「T」・時計文字盤・太陽/天気記号の統合シンボル）は、AI 支援による生成を経て類似性・ブランディングに関する監査が実施されています。
+  - 正式なプロヴェナンスおよび知的財産デューデリジェンス記録は、[IP_COMPLIANCE.ja.md](../IP_COMPLIANCE.ja.md) および 4 アプリ総合監査アーカイブ [ICON_DESIGN_HISTORY.ja.md](../ICON_DESIGN_HISTORY.ja.md) に記録されています。
+
+---
+
 <p align="center">
   <a href="PORTAL.ja.md">📚 ドキュメントポータル</a> | <a href="../README.ja.md">← ルート README</a> | <a href="FEATURES.md">English Spec →</a>
 </p>

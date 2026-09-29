@@ -1,7 +1,7 @@
 # Licensing & Third-Party Notice
 
 <p align="center">
-  <strong>English</strong> | <a href="README.ja.md">日本語</a> | <a href="../README.md">← Root README</a>
+  <a href="../docs/PORTAL.md">Documentation Portal</a> | <strong>English</strong> | <a href="README.ja.md">日本語</a> | <a href="../README.md">← Root README</a>
 </p>
 
 ---
@@ -100,6 +100,7 @@ All bundled third-party assets retain their respective upstream licenses:
 - **Application Icons & Desktop Entries**:
   - Location: `resources/icons/toodle*.png`, `resources/icons/*.svg`, `resources/*.desktop`
   - Created specifically for Toodle and covered by the project's **MIT License**.
+  - Formal provenance and IP due-diligence records for the application icon and visual identity are documented in [IP_COMPLIANCE.md](../IP_COMPLIANCE.md) and the comprehensive 4-app audit archive [ICON_DESIGN_HISTORY.md](../ICON_DESIGN_HISTORY.md).
 
 ---
 
@@ -150,7 +151,7 @@ cargo bundle-licenses --format yaml --output THIRDPARTY.yaml
 | **Open Sans** | SIL Open Font License 1.1 | [OPEN_SANS_OFL.txt](OPEN_SANS_OFL.txt) |
 | **JetBrains Mono NL** | SIL Open Font License 1.1 | [JETBRAINS_MONO_NL_OFL.txt](JETBRAINS_MONO_NL_OFL.txt) |
 | **DejaVu Serif** | Bitstream Vera / DejaVu License | [DEJAVU_LICENSE.txt](DEJAVU_LICENSE.txt) |
-| **App Icons & Assets** | MIT License | `resources/icons/`, `resources/*.desktop` |
+| **App Icons & Assets** | MIT License | `resources/icons/`, `resources/*.desktop` (See [IP_COMPLIANCE](../IP_COMPLIANCE.md), [ICON_DESIGN_HISTORY](../ICON_DESIGN_HISTORY.md)) |
 
 ---
 

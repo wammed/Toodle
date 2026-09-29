@@ -16,6 +16,8 @@ This portal provides structured access to all guides, architecture specification
 | **[💡 Feature Specification (FEATURES)](FEATURES.md)** | Complete UI/UX specifications, 9 grid zones, 10 size stages, weather subsystem | Users exploring features and theme options |
 | **[📐 Architecture Specification (ARCHITECTURE)](ARCHITECTURE.md)** | Multi-surface hierarchy, dynamic multi-monitor management, subsecond clock stream | Developers and system architects |
 | **[🛡️ Reliability & Security Model (SECURITY)](SECURITY.md)** | 2-tier weather cache, atomic persistence, offline fallback, input region safety | Security auditors and curious developers |
+| **[🛡️ IP Compliance Due Diligence (IP COMPLIANCE)](../IP_COMPLIANCE.md)** | Toodle icon provenance, similarity review findings, and IP due-diligence record | All users, contributors, and legal reviewers |
+| **[🎨 Icon Design & IP Review History (ICON DESIGN HISTORY)](../ICON_DESIGN_HISTORY.md)** | Cross-application AI generation logs, similarity audit history, and design iterations | All users and legal reviewers |
 | **[📄 Licensing & Third-Party Notice](../LICENSES/README.md)** | MIT License, Meteocons, embedded fonts, cargo-deny dependency compliance | Legal compliance officers and packagers |
 
 ---
@@ -42,6 +44,11 @@ This portal provides structured access to all guides, architecture specification
 
 ### 6. Verify Licenses, Fonts, and Asset Clearances
 - Consult [LICENSES/README.md](../LICENSES/README.md) for the core MIT license, Bas Milius's Meteocons (MIT), bundled fonts (Roboto, Open Sans, JetBrains Mono NL, DejaVu Serif), and automated `cargo-deny` audits documented in [LICENSES/THIRD_PARTY_AUDIT.md](../LICENSES/THIRD_PARTY_AUDIT.md).
+
+### 7. For Legal, Compliance & IP Provenance
+- Check the [Licensing Policy](../LICENSES/README.md) for source distribution, third-party crate governance, and font handling.
+- Review the [IP Compliance Record](../IP_COMPLIANCE.md) for Toodle icon provenance and due diligence.
+- Read the [Icon Design & IP Review History](../ICON_DESIGN_HISTORY.md) for the complete 4-app chronological audit log across Fluffy, Waddle, Rooney, and Toodle.
 
 ---
 

@@ -134,6 +134,16 @@ A native XDG Toplevel application (`720 x 780`, solid dark background) providing
 
 ---
 
+## 7. Licensing & Visual Asset Provenance
+
+- **Embedded Fonts & Weather Assets**:
+  - Embedded fonts (Roboto, Open Sans, JetBrains Mono NL, DejaVu Serif) and Bas Milius Meteocons SVG icons are licensed under their respective permissive open-source licenses, detailed in [`LICENSES/README.md`](../LICENSES/README.md).
+- **Application Icon & Visual Identity Clearance**:
+  - Toodle's application icon (the integrated **T**, clock dial, and sun/weather symbol) was developed via AI-assisted generation and audited for similarity and branding concerns.
+  - Formal provenance and IP due-diligence records are documented in [IP_COMPLIANCE.md](../IP_COMPLIANCE.md) and the comprehensive 4-app chronological audit log [ICON_DESIGN_HISTORY.md](../ICON_DESIGN_HISTORY.md).
+
+---
+
 <p align="center">
   <a href="PORTAL.md">📚 Documentation Portal</a> | <a href="../README.md">← Root README</a> | <a href="FEATURES.ja.md">日本語仕様書はこちら →</a>
 </p>

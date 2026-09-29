@@ -1,7 +1,7 @@
 # ライセンスおよびサードパーティ通知 (Licensing & Third-Party Notice)
 
 <p align="center">
-  <a href="README.md">English</a> | <strong>日本語</strong> | <a href="../README.ja.md">← ルート README</a>
+  <a href="../docs/PORTAL.ja.md">ドキュメンテーションポータル</a> | <a href="README.md">English</a> | <strong>日本語</strong> | <a href="../README.ja.md">← ルート README</a>
 </p>
 
 ---
@@ -100,6 +100,7 @@ Toodle は COSMIC / Wayland ネイティブウィジェットとして動作し�
 - **アプリアイコン & デスクトップエントリ**:
   - 格納先: `resources/icons/toodle*.png`, `resources/icons/*.svg`, `resources/*.desktop`
   - Toodle 用に独自作成されたオリジナルアセットおよびメタデータであり、本プロジェクトの **MIT License** が適用されます。
+  - アプリアイコンおよびビジュアルアイデンティティの正式な由来（プロヴェナンス）および知財デューデリジェンス記録は [IP_COMPLIANCE.ja.md](../IP_COMPLIANCE.ja.md) および 4 アプリ総合監査アーカイブ [ICON_DESIGN_HISTORY.ja.md](../ICON_DESIGN_HISTORY.ja.md) に記録されています。
 
 ---
 
@@ -150,7 +151,7 @@ cargo bundle-licenses --format yaml --output THIRDPARTY.yaml
 | **Open Sans** | SIL Open Font License 1.1 | [OPEN_SANS_OFL.txt](OPEN_SANS_OFL.txt) |
 | **JetBrains Mono NL** | SIL Open Font License 1.1 | [JETBRAINS_MONO_NL_OFL.txt](JETBRAINS_MONO_NL_OFL.txt) |
 | **DejaVu Serif** | Bitstream Vera / DejaVu License | [DEJAVU_LICENSE.txt](DEJAVU_LICENSE.txt) |
-| **アプリアイコン & アセット** | MIT License | `resources/icons/`, `resources/*.desktop` |
+| **アプリアイコン & アセット** | MIT License | `resources/icons/`, `resources/*.desktop`（[IP_COMPLIANCE](../IP_COMPLIANCE.ja.md)、[ICON_DESIGN_HISTORY](../ICON_DESIGN_HISTORY.ja.md) 参照） |
 
 ---
 

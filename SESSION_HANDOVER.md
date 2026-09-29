@@ -130,6 +130,28 @@
     - **P1: 設定保存エラーの可視化 & ファイル監視のデバウンス (`src/settings/main.rs`, `src/config/mod.rs`, `src/main.rs`)**: `toodle-settings` で保存失敗時に UI ステータスとエラーログで通知。ファイル監視に 50ms デバウンスとイベントキュー集約を導入。Edit モード中の設定リロードで作業中座標が上書きされる競合を防止。
     - **P2: 旧設定読み込み時のディスク即時再保存**: 旧設定形式を検出した場合はマイグレーション後直ちにディスクへクリーンな新 TOML を再保存。
     - **Clippy 警告ゼロ化 & 単体テスト 40件拡充**: 全ターゲット警告 0 件を達成し、OutputManager 状態遷移、JSON パース異常系、座標範囲、旧設定マイグレーション検出などのテストを追加。
+19. **アイコン意匠・知的財産（IP）監査履歴記録（`ICON_DESIGN_HISTORY`）の導入および全ドキュメント総合整理**:
+    - **背景と目的**:
+      - Toodle を含む 4 アプリケーション（Fluffy, Waddle, Rooney, Toodle）のアイコン意匠設計、AI 支援による類似性監査（Gemini）、および改訂プロセスの全容を記録した `ICON_DESIGN_HISTORY.md`（英語）および `ICON_DESIGN_HISTORY.ja.md`（日本語）の追加に伴い、リポジトリ内の全ドキュメント（`IP_COMPLIANCE`, `LICENSES/README`, `README`, `docs/PORTAL`, `docs/FEATURES`）の相互参照リンク、ナビゲーションヘッダー、ドキュメント構成を整理・統一。
+    - **主要な実施・整理項目**:
+      1. **`ICON_DESIGN_HISTORY.md` & `ICON_DESIGN_HISTORY.ja.md` の配備とナビゲーション整備**:
+         - 上部ナビゲーションバー（`Documentation Portal` / `ドキュメンテーションポータル` リンク、日英切り替え、およびルート README リンク）を整備。
+      2. **`IP_COMPLIANCE.md` & `IP_COMPLIANCE.ja.md` の相互参照拡充**:
+         - ヘッダーに `Documentation Portal` およびルート README へのリンクを追加。
+         - 第7節「Record Keeping」/「記録の保持」に、4アプリ横断の詳細記録である `ICON_DESIGN_HISTORY.md` / `ICON_DESIGN_HISTORY.ja.md` への相互参照リンクを追加。
+      3. **`LICENSES/README.md` & `LICENSES/README.ja.md` の整合性確保**:
+         - ヘッダーに `Documentation Portal` へのリンクを追加。
+         - 第4節「Application Icons & Desktop Entries」およびサマリー表の「App Icons & Assets」欄に、`IP_COMPLIANCE.md` および `ICON_DESIGN_HISTORY.md` への参照リンクを追加。
+      4. **`README.md` & `README.ja.md` のポータル・ライセンス導線拡充**:
+         - `## 📚 Documentation Portal` セクションのテーブルに法務・知財記録 2 文書（`IP_COMPLIANCE`, `ICON_DESIGN_HISTORY`）を追加。
+         - `## 📄 License` / `## 📄 ライセンス` セクションに、ライセンス総合案内・知的財産デューデリジェンス記録書・アイコン設計履歴への導線リストを追加。
+      5. **ドキュメントポータル (`docs/PORTAL.md` & `docs/PORTAL.ja.md`) の更新**:
+         - 総合ドキュメントナビゲーションテーブルに `IP_COMPLIANCE` および `ICON_DESIGN_HISTORY` を追加。
+         - 目的別ガイドに「7. For Legal, Compliance & IP Provenance」/「7. 法務・ライセンス・知的財産 (IP) プロヴェナンスを確認したい」を追加。
+      6. **機能仕様書 (`docs/FEATURES.md` & `docs/FEATURES.ja.md`) の整合性向上**:
+         - セクション 7「Licensing & Visual Asset Provenance」/「ライセンス & 意匠プロヴェナンス」を新設し、フォント・天気アセット方針および `IP_COMPLIANCE` / `ICON_DESIGN_HISTORY` への言及を追加。
+      7. **全ドキュメントの日英対称性と相対リンク検証**:
+         - 全ドキュメントの相対リンクの整合性とリンク切れの解消を網羅的に検証。
 
 ---
 

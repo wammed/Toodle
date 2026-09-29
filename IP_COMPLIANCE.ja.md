@@ -1,7 +1,7 @@
 # アイコンデザインおよび知的財産コンプライアンス・デューデリジェンス記録
 
 <p align="center">
-  <a href="IP_COMPLIANCE.md">English</a> | <strong>日本語</strong>
+  <a href="docs/PORTAL.ja.md">ドキュメンテーションポータル</a> | <a href="IP_COMPLIANCE.md">English</a> | <strong>日本語</strong> | <a href="README.ja.md">← ルート README</a>
 </p>
 
 本書は、**Toodle** アプリケーションアイコンの由来（プロベナンス）、デザインレビューの履歴、および知的財産（IP）デューデリジェンスのプロセスを記録するものです。
@@ -60,7 +60,7 @@ Gemini の元記録には、アイコンが「承認済み（approved）」「�
 
 ## 7. 記録の保持 (Record Keeping)
 
-Gemini との詳細な対話記録は、基礎となる開発／由来記録として別途保持されます。
+Gemini との詳細な対話記録は、基礎となる開発／由来記録として別途保持されます。初期の生成経緯、4アプリケーション（Fluffy, Waddle, Rooney, Toodle）を横断した類似性レビュー、デザインの変遷等の包括的な詳細履歴については、[ICON_DESIGN_HISTORY.ja.md](ICON_DESIGN_HISTORY.ja.md) を参照してください。
 
 本書はリポジトリ向け（公開向け）の簡潔な要約であり、アイコンまたはその基礎となるサードパーティ製アセットに重大な変更があった場合に更新されるものとします。
 

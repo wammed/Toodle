@@ -129,6 +129,8 @@ Comprehensive documentation is organized across specialized guides:
 | **[💡 Feature Specification (FEATURES)](docs/FEATURES.md)** | Stage dimension charts, 10 theme palettes, weather caching, SVG icons |
 | **[📐 Architecture Specification (ARCHITECTURE)](docs/ARCHITECTURE.md)** | Multi-surface hierarchy, dynamic monitor management, ticker clock stream |
 | **[🛡️ Reliability & Security Model (SECURITY)](docs/SECURITY.md)** | 2-tier cache integrity, stale protection, PID atomic writes, layer isolation |
+| **[🛡️ IP Compliance Due Diligence (IP_COMPLIANCE)](IP_COMPLIANCE.md)** | Toodle icon provenance, similarity review findings, and IP due-diligence record |
+| **[🎨 Icon Design & IP Review History (ICON_DESIGN_HISTORY)](ICON_DESIGN_HISTORY.md)** | Cross-application AI generation logs, similarity audit history, and design iterations |
 | **[📄 Licensing & Third-Party Notice](LICENSES/README.md)** | Core MIT License, Meteocons, embedded fonts, cargo-deny dependency compliance |
 
 ---
@@ -171,9 +173,14 @@ Comprehensive documentation is organized across specialized guides:
 
 Toodle's source code is released under the [MIT License](LICENSE).
 
+For detailed licensing policies, third-party dependency compliance, and asset provenance records, please see:
+
+- **[Licensing & Third-Party Notice (LICENSES/README.md)](LICENSES/README.md)**: Source-code-only distribution policy, third-party dependency compliance (`cargo-deny` permissive policy), dynamic linking of system libraries, and guidance on packaging.
+- **[Icon Design & IP Compliance Due Diligence Record (IP_COMPLIANCE.md)](IP_COMPLIANCE.md)**: Toodle icon provenance, similarity audit findings, and due diligence.
+- **[Icon Design & IP Review History (ICON_DESIGN_HISTORY.md)](ICON_DESIGN_HISTORY.md)**: Integrated chronological archive of AI icon generation and similarity reviews across the 4 applications.
+
 All authoritative third-party asset licenses and dependency compliance records are centralized in the **[`LICENSES/`](LICENSES/)** directory:
 
-- **Comprehensive Licensing Notice**: **[LICENSES/README.md](LICENSES/README.md)** ([Japanese: LICENSES/README.ja.md](LICENSES/README.ja.md))
 - **Embedded Meteocons Color SVG Icons**: [MIT License (Bas Milius)](LICENSES/METEOCONS_LICENSE.txt)
 - **Embedded Fonts**: [Roboto (SIL OFL 1.1)](LICENSES/ROBOTO_OFL.txt), [Open Sans (SIL OFL 1.1)](LICENSES/OPEN_SANS_OFL.txt), [JetBrains Mono NL (SIL OFL 1.1)](LICENSES/JETBRAINS_MONO_NL_OFL.txt), [DejaVu Serif (Bitstream Vera / DejaVu)](LICENSES/DEJAVU_LICENSE.txt)
 - **Third-Party Dependency Audit Records**: [LICENSES/THIRD_PARTY_AUDIT.md](LICENSES/THIRD_PARTY_AUDIT.md)
